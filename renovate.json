@@ -1,0 +1,20 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "assignees": ["leonvdbeek"],
+  "reviewers": ["leonvdbeek"],
+  "extends": [
+    "config:recommended",
+    ":dependencyDashboard",
+    ":enableVulnerabilityAlertsWithLabel('security')",
+    ":preserveSemverRanges",
+    ":rebaseStalePrs",
+    "group:recommended"
+  ],
+  "labels": ["renovate"],
+  "kubernetes": {
+    "fileMatch": ["(^|/)kubernetes/.+/[^/]+\\.ya?ml$"]
+  },
+  "argocd": {
+    "fileMatch": ["(^|/)kubernetes/.+/[^/]+\\.ya?ml$"]
+  }
+}

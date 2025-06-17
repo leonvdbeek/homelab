@@ -1,0 +1,51 @@
+machine:
+  certSANs:
+    - ${cluster.vip}
+    - ${node_ip}
+    - ${cluster.endpoint}
+
+  kubelet:
+    clusterDNS:
+      - 10.96.0.10
+    # extraArgs:
+    #   rotate-server-certificates: true
+    extraMounts:
+%{ if length(disks) > 0 }
+%{ for disk_name, disk in disks }
+      # bind‑mount each extra disk’s mountpoint
+      - destination: ${disk.mountpoint}
+        type: bind
+        source: ${disk.mountpoint}
+        options:
+          - bind
+          - rshared
+          - rw
+%{ endfor }
+%{ endif }
+  sysctls:
+    vm.nr_hugepages: "1024"
+  kernel:
+    modules:
+      - name: nvme_tcp
+      - name: vfio_pci
+
+  network:
+    hostname: ${hostname}
+
+  nodeLabels:
+    topology.kubernetes.io/region: ${cluster_name}
+    topology.kubernetes.io/zone: ${node_name}
+
+%{ if length(disks) > 0 }
+  disks:
+%{ for disk_name, disk in disks }
+    - device: ${disk.device}
+      partitions:
+        - mountpoint: ${disk.mountpoint}
+%{ endfor }
+%{ endif }
+
+cluster:
+  clusterName: kube.local.leonvdbeek.com
+  network:
+    dnsDomain: kube.local.leonvdbeek.com

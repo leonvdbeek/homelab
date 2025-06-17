@@ -1,0 +1,70 @@
+machine:
+  certSANs:
+    - ${cluster.vip}     # The VIP
+    - ${node_ip}      # The node's own IP
+    - ${cluster.endpoint}
+
+  kubelet:
+    extraMounts:
+      - destination: /var/lib/longhorn
+        type: bind
+        source: /var/lib/longhorn
+        options:
+          - bind
+          - rshared
+          - rw
+  sysctls:
+    vm.nr_hugepages: "1024"
+  kernel:
+    modules:
+      - name: nvme_tcp
+      - name: vfio_pci
+  network:
+    hostname: ${hostname}
+    interfaces:
+      - interface: eth0
+        dhcp: true
+        vip:
+          ip: ${cluster.vip}
+
+  nodeLabels:
+    topology.kubernetes.io/region: ${cluster_name}
+    topology.kubernetes.io/zone: ${node_name}
+
+cluster:
+  allowSchedulingOnControlPlanes: true
+  clusterName: kube.local.leonvdbeek.com
+  apiServer:
+    # extraArgs:
+    #   oidc-issuer-url: https://authelia.kube.local.leonvdbeek.com
+    #   oidc-client-id: kubectl
+    #   oidc-username-claim: preferred_username
+    #   oidc-username-prefix: 'authelia:'
+    #   oidc-groups-claim: groups
+    #   oidc-groups-prefix: 'authelia:'
+  network:
+    dnsDomain: kube.local.leonvdbeek.com
+    cni:
+      name: none
+  proxy:
+    disabled: true
+  extraManifests:
+    - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+    - https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.2.1/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml
+    - https://raw.githubusercontent.com/alex1989hu/kubelet-serving-cert-approver/main/deploy/standalone-install.yaml
+    - https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
+  inlineManifests:
+  - name: cilium-values
+    contents: |
+      ---
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: cilium-values
+        namespace: kube-system
+      data:
+        values.yaml: |-
+          ${indent(10, cilium_values)}
+  - name: cilium-bootstrap
+    contents: |
+      ${indent(6, cilium_install)}
