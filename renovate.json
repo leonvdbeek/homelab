@@ -1,20 +1,74 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "assignees": ["leonvdbeek"],
-  "reviewers": ["leonvdbeek"],
   "extends": [
     "config:recommended",
-    ":dependencyDashboard",
-    ":enableVulnerabilityAlertsWithLabel('security')",
-    ":preserveSemverRanges",
     ":rebaseStalePrs",
-    "group:recommended"
+    ":enablePreCommit",
+    "docker:enableMajor",
+    ":automergePatch",
+    ":automergeMinor",
+    "mergeConfidence:all-badges"
   ],
-  "labels": ["renovate"],
-  "kubernetes": {
-    "fileMatch": ["(^|/)kubernetes/.+/[^/]+\\.ya?ml$"]
+  "dependencyDashboard": true,
+  "kustomize": {
+    "managerFilePatterns": ["/(^|/)kustomization\\.ya?ml(\\.j2)?$/"]
   },
-  "argocd": {
-    "fileMatch": ["(^|/)kubernetes/.+/[^/]+\\.ya?ml$"]
+  "helm-values": {
+    "managerFilePatterns": ["/k8s/.+/values\\.yaml$/"]
+  },
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/\\.tf$/",
+        "/\\.tftpl$/",
+        "/\\.yaml$/",
+        "/\\.sh$/"
+      ],
+      "matchStrings": [
+        "(?<currentValue>[\\w+\\.\\-]*)['\",;]*\\s*#\\s?renovate: (?<datasource>\\S+)=(?<depName>\\S+)\\s?(registry=(?<registryUrl>\\S+))?\\s?(versioning=(?<versioning>\\S+))?"
+      ]
+    }
+  ],
+  "packageRules": [
+    {
+      "groupName": "Media containers",
+      "matchPackageNames": ["/ghcr.io/onedr0p/.*/", "/ghcr.io/jellyfin/.*/"]
+    },
+    {
+      "groupName": "Netbird",
+      "matchPackageNames": ["/docker.io/netbirdio/.*/"]
+    },
+    {
+      "groupName": "Intel Device Plugins",
+      "matchPackageNames": ["/intel-device-plugins/.*/"]
+    },
+    {
+      "groupName": "Cilium",
+      "automerge": true,
+      "matchPackageNames": ["/cilium/.*/"]
+    },
+    {
+      "matchManagers": ["terraform"],
+      "matchDepTypes": ["provider", "required_provider"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "matchManagers": ["helm-values", "helm-requirements"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "groupName": "external-secrets",
+      "matchPackageNames": ["/^ghcr.io/external-secrets//"]
+    },
+    {
+      "groupName": "all dependencies",
+      "matchPackageNames": ["*"]
+    }
+  ],
+  "kubernetes": {
+    "managerFilePatterns": ["/k8s/.+\\.yaml$/", "/k8s/.+\\.yml$/"]
   }
 }
