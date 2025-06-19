@@ -12,7 +12,7 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/leonvdbeek/homelab.git
-        revision: main
+        revision: master
         directories:
           # - path: k8s/argocd
           # - path: k8s/cert-manager
