@@ -11,7 +11,7 @@ module "talos" {
 
   image = {
     version        = "v1.10.2"
-    update_version = "v1.10.2" # renovate: github-releases=siderolabs/talos
+    update_version = "v1.10.4" # renovate: github-releases=siderolabs/talos
     schematic      = file("${path.module}/talos/image/schematic.yaml")
   }
 
@@ -29,9 +29,9 @@ module "talos" {
     endpoint           = "192.168.4.6" # Control plane API endpoint
     gateway            = "192.168.4.1"  # Network gateway
     vip                = "192.168.4.5" # Control plane VIP
-    talos_version      = "v1.10.2" # renovate: github-releases=siderolabs/talos
+    talos_version      = "v1.10.4" # renovate: github-releases=siderolabs/talos
     proxmox_cluster    = "pve"
-    kubernetes_version = "1.33.1" # renovate: github-releases=kubernetes/kubernetes
+    kubernetes_version = "1.33.2" # renovate: github-releases=kubernetes/kubernetes
   }
 
   nodes = {
