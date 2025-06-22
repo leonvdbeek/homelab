@@ -11,5 +11,3 @@ helmCharts:
     version: v1.18.1 # renovate: github-releases=jetstack/cert-manager
     releaseName: cert-manager
     namespace: cert-manager
-    valuesInline:
-      crds.enabled: true
