@@ -100,15 +100,15 @@ longhornDriver:
 preUpgradeChecker:
   jobEnabled: false
 
-metrics:
-  serviceMonitor:
-    enabled: true
-    additionalLabels: {}
-    annotations: {}
-    interval: '30s'
-    scrapeTimeout: '10s'
-    relabelings: []
-    metricRelabelings: []
+# metrics:
+#   serviceMonitor:
+#     enabled: true
+#     additionalLabels: {}
+#     annotations: {}
+#     interval: '30s'
+#     scrapeTimeout: '10s'
+#     relabelings: []
+#     metricRelabelings: []
 # ---
 # PodSecurityContext/PodSecurity Admission Compliance
 # The Longhorn Helm chart does not expose direct securityContext fields for DaemonSet/Jobs.
