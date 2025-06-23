@@ -9,4 +9,6 @@ resources:
 - gateway
 - argocd
 - longhorn
+- postgresql
+- authentik
 - https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.30.0/controller.yaml
