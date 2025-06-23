@@ -1,0 +1,27 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: longhorn
+  namespace: longhorn-system
+spec:
+  parentRefs:
+    - name: cilium-gateway
+      namespace: gateway
+  hostnames:
+    - "longhorn.lenovium.leonvdbeek.com"
+    - "longhorn-metrics.lenovium.leonvdbeek.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: longhorn-frontend
+          port: 80
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /metrics
+      backendRefs:
+        - name: longhorn-metrics
+          port: 8080
