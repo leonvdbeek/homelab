@@ -32,7 +32,7 @@ ipam:
 
 operator:
   rollOutPods: true
-  replicas: 1
+  # replicas: 1
   resources:
     requests:
       cpu: 200m
