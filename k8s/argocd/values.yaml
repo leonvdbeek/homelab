@@ -4,7 +4,7 @@ configs:
     create: true
     application.resourceTrackingMethod: annotation+label
     admin.enabled: true
-    url: https://argocd.kube.leonvdbeek.com
+    url: https://argocd.lenovium.leonvdbeek.com
     kustomize.buildOptions: '--enable-helm'
     # accounts.kubechecks: apiKey
     # # OIDC Configuration

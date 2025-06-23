@@ -14,7 +14,7 @@ spec:
     - protocol: HTTPS
       port: 443
       name: https-gateway
-      hostname: "*.kube.leonvdbeek.com"
+      hostname: "*.lenovium.leonvdbeek.com"
       tls:
         certificateRefs:
           - kind: Secret
@@ -25,7 +25,7 @@ spec:
     - protocol: HTTPS
       port: 443
       name: https-domain-gateway
-      hostname: "kube.leonvdbeek.com"
+      hostname: "lenovium.leonvdbeek.com"
       tls:
         certificateRefs:
           - kind: Secret

@@ -5,7 +5,8 @@ metadata:
   namespace: gateway
 spec:
   dnsNames:
-    - "*.kube.leonvdbeek.com"
+    - "*.lenovium.leonvdbeek.com"
+    - "lenovium.leonvdbeek.com"
   issuerRef:
     name: cloudflare-issuer
     kind: Issuer
