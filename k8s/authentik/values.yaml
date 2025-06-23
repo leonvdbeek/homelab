@@ -1,0 +1,250 @@
+---
+
+
+## Globally shared configuration for authentik components.
+global:
+  # -- Provide a name in place of `authentik`
+  nameOverride: ""
+  # -- String to fully override `"authentik.fullname"`
+  fullnameOverride: ""
+  # -- A custom namespace to override the default namespace for the deployed resources.
+  namespaceOverride: ""
+  # -- Common labels for all resources.
+  additionalLabels: {}
+    # app: authentik
+
+  # Number of old deployment ReplicaSets to retain. The rest will be garbage collected.
+  revisionHistoryLimit: 3
+
+  # -- Environment variables to pass to all deployed Deployments. Does not apply to GeoIP
+  # See configuration options at https://goauthentik.io/docs/installation/configuration/
+  # @default -- `[]` (See [values.yaml])
+  env: []
+    # - name: AUTHENTIK_VAR_NAME
+    #   value: VALUE
+    # - name: AUTHENTIK_VAR_OTHER
+    #   valueFrom:
+    #     secretKeyRef:
+    #       name: secret-name
+    #       key: secret-key
+    # - name: AUTHENTIK_VAR_ANOTHER
+    #   valueFrom:
+    #     configMapKeyRef:
+    #       name: config-map-name
+    #       key: config-map-key
+
+  # -- envFrom to pass to all deployed Deployments. Does not apply to GeoIP
+  # @default -- `[]` (See [values.yaml])
+  envFrom:
+    - secretRef:
+        name: authentik-core-secrets
+    # - secretRef:
+    #     name: authentik-blueprint-secrets
+    #- secretRef:
+     #   name: authentik-smtp-credentials
+
+  # -- Additional volumeMounts to all deployed Deployments. Does not apply to GeoIP
+  # @default -- `[]` (See [values.yaml])
+  volumeMounts:
+    - name: db-creds
+      mountPath: /secrets/authentik
+      readOnly: true
+
+  # -- Additional volumes to all deployed Deployments.
+  # @default -- `[]` (See [values.yaml])
+  volumes:
+    - name: db-creds
+      secret:
+        secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
+
+
+## Authentik configuration
+authentik:
+  # -- authentik configuration, will be templated as environment variables
+  secret_key: "env://AUTHENTIK_SECRET_KEY"
+  # -- whether to create the authentik configuration secret
+  enabled: true
+  # -- Log level for server and worker
+  log_level: info
+  # -- Secret key used for cookie singing and unique user IDs,
+  # don't change this after the first install
+  events:
+    context_processors:
+      # -- Path for the GeoIP City database. If the file doesn't exist, GeoIP features are disabled.
+      geoip: /geoip/GeoLite2-City.mmdb
+      # -- Path for the GeoIP ASN database. If the file doesn't exist, GeoIP features are disabled.
+      asn: /geoip/GeoLite2-ASN.mmdb
+  web:
+    # -- Relative path the authentik instance will be available at. Value _must_ contain both a leading and trailing slash.
+    path: /
+  email:
+    # -- SMTP Server emails are sent from, fully optional
+    host: ""
+    # -- SMTP server port
+    port: 587
+    # -- SMTP credentials, when left empty, no authentication will be done
+    username: ""
+    # -- SMTP credentials, when left empty, no authentication will be done
+    password: ""
+    # -- Use StartTLS. Enable either use_tls or use_ssl, they can't be enabled at the same time.
+    use_tls: false
+    # -- Use SSL. Enable either use_tls or use_ssl, they can't be enabled at the same time.
+    use_ssl: false
+    # -- Connection timeout
+    timeout: 30
+    # -- Email from address, can either be in the format "foo@bar.baz" or "authentik <foo@bar.baz>"
+    from: ""
+  outposts:
+    # -- Template used for managed outposts. The following placeholders can be used
+    # %(type)s - the type of the outpost
+    # %(version)s - version of your authentik install
+    # %(build_hash)s - only for beta versions, the build hash of the image
+    container_image_base: ghcr.io/goauthentik/%(type)s:%(version)s
+  error_reporting:
+    # -- This sends anonymous usage-data, stack traces on errors and
+    # performance data to sentry.beryju.org, and is fully opt-in
+    enabled: false
+    # -- This is a string that is sent to sentry with your error reports
+    environment: "k8s"
+    # -- Send PII (Personally identifiable information) data to sentry
+    send_pii: false
+  postgresql:
+    host: authentik-postgresql
+    name: authentik
+    user: file:///secrets/authentik/username
+    password: file:///secrets/authentik/password
+    port: "5432"
+
+  redis:
+    password: "env://AUTHENTIK_REDIS__PASSWORD"
+
+# blueprints:
+#   # -- List of config maps to mount blueprints from.
+#   # Only keys in the configMap ending with `.yaml` will be discovered and applied.
+#   configMaps:
+#     - authentik-blueprints
+#   # -- List of secrets to mount blueprints from.
+#   # Only keys in the secret ending with `.yaml` will be discovered and applied.
+#   secrets: []
+
+## authentik server
+server:
+  # -- whether to enable server resources
+  enabled: true
+
+  ## authentik server service configuration
+  service:
+    # -- authentik server service annotations
+    annotations: {}
+    # -- authentik server service labels
+    labels: {}
+    # -- authentik server service type
+    type: LoadBalancer
+
+
+worker:
+  enabled: true
+  livenessProbe:
+    timeoutSeconds: 5
+  readinessProbe:
+    timeoutSeconds: 5
+  startupProbe:
+    timeoutSeconds: 5
+postgresql:
+  enabled: false
+
+  # ## authentik server metrics service configuration
+  # metrics:
+  #   # -- deploy metrics service
+  #   enabled: true
+  #   service:
+  #     # -- metrics service type
+  #     type: ClusterIP
+  #     # -- metrics service clusterIP. `None` makes a "headless service" (no virtual IP)
+  #     clusterIP: ""
+  #     # -- metrics service annotations
+  #     annotations: {}
+  #     # -- metrics service labels
+  #     labels: {}
+  #     # -- metrics service port
+  #     servicePort: 9300
+  #     # -- metrics service port name
+  #     portName: metrics
+  #   serviceMonitor:
+  #     # -- enable a prometheus ServiceMonitor
+  #     enabled: false
+  #     # -- Prometheus ServiceMonitor interval
+  #     interval: 30s
+  #     # -- Prometheus ServiceMonitor scrape timeout
+  #     scrapeTimeout: 3s
+  #     # -- Prometheus [RelabelConfigs] to apply to samples before scraping
+  #     relabelings: []
+  #     # -- Prometheus [MetricsRelabelConfigs] to apply to samples before ingestion
+  #     metricRelabelings: []
+  #     # -- Prometheus ServiceMonitor selector
+  #     selector: {}
+  #       # prometheus: kube-prometheus
+
+  #     # -- Prometheus ServiceMonitor scheme
+  #     scheme: ""
+  #     # -- Prometheus ServiceMonitor tlsConfig
+  #     tlsConfig: {}
+  #     # -- Prometheus ServiceMonitor namespace
+  #     namespace: ""
+  #     # -- Prometheus ServiceMonitor labels
+  #     labels: {}
+  #     # -- Prometheus ServiceMonitor annotations
+  #     annotations: {}
+
+serviceAccount:
+  # -- Create service account. Needed for managed outposts
+  create: true
+  # -- additional service account annotations
+  annotations: {}
+  serviceAccountSecret:
+    # As we use the authentik-remote-cluster chart as subchart, and that chart
+    # creates a service account secret by default which we don't need here,
+    # disable its creation
+    enabled: false
+  fullnameOverride: authentik
+
+
+geoip:
+  # -- enable GeoIP sidecars for the authentik server and worker pods
+  enabled: false
+
+  editionIds: "GeoLite2-City GeoLite2-ASN"
+  # -- GeoIP update frequency, in hours
+  updateInterval: 8
+  # -- sign up under https://www.maxmind.com/en/geolite2/signup
+  accountId: ""
+  # -- sign up under https://www.maxmind.com/en/geolite2/signup
+  licenseKey: ""
+  ## use existing secret instead of values above
+  existingSecret:
+    # -- name of an existing secret to use instead of values above
+    secretName: ""
+    # -- key in the secret containing the account ID
+    accountId: "account_id"
+    # -- key in the secret containing the license key
+    licenseKey: "license_key"
+redis:
+  # -- enable the Bitnami Redis chart. Refer to https://github.com/bitnami/charts/blob/main/bitnami/redis/ for possible values.
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: true
+    existingSecret: authentik-core-secrets
+    existingSecretPasswordKey: redis-password
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
+
+prometheus:
+  rules:
+    enabled: true
+
+metrics:
+  # -- deploy metrics service
+  enabled: true

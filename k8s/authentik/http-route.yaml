@@ -1,0 +1,23 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: authentik
+  namespace: auth
+spec:
+  parentRefs:
+    - name: cilium-gateway
+      namespace: gateway
+    # - name: internal
+    #   namespace: gateway
+    # - name: external
+    #   namespace: gateway
+  hostnames:
+    - "sso.lenovium.leonvdbeek.com"
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /
+      backendRefs:
+        - name: authentik-server
+          port: 80
