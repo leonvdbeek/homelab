@@ -88,7 +88,7 @@ variable "inline_manifests" {
 variable "download_node" {
   description = "Proxmox node to use for downloading Talos images"
   type        = string
-  default     = "pve"  # For backward compatibility
+  default     = "lenovo-2"  # For backward compatibility
 }
 
 

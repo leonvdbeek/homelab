@@ -81,7 +81,7 @@ envoy:
 
 hubble:
   peerService:
-    clusterDomain: kube.local.leonvdbeek.com
+    clusterDomain: kube.leonvdbeek.com
   enabled: true
   relay:
     enabled: true

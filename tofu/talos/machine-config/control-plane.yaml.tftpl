@@ -33,17 +33,17 @@ machine:
 
 cluster:
   allowSchedulingOnControlPlanes: true
-  clusterName: kube.local.leonvdbeek.com
+  clusterName: kube.leonvdbeek.com
   apiServer:
     # extraArgs:
-    #   oidc-issuer-url: https://authelia.kube.local.leonvdbeek.com
+    #   oidc-issuer-url: https://authelia.kube.leonvdbeek.com
     #   oidc-client-id: kubectl
     #   oidc-username-claim: preferred_username
     #   oidc-username-prefix: 'authelia:'
     #   oidc-groups-claim: groups
     #   oidc-groups-prefix: 'authelia:'
   network:
-    dnsDomain: kube.local.leonvdbeek.com
+    dnsDomain: kube.leonvdbeek.com
     cni:
       name: none
   proxy:

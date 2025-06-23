@@ -9,27 +9,27 @@ spec:
   gatewayClassName: cilium
   infrastructure:
     annotations:
-      io.cilium/lb-ipam-ips: "192.168.4.11"
+      io.cilium/lb-ipam-ips: "10.0.0.20"
   listeners:
     - protocol: HTTPS
       port: 443
       name: https-gateway
-      hostname: "*.local.leonvdbeek.com"
+      hostname: "*.kube.leonvdbeek.com"
       tls:
         certificateRefs:
           - kind: Secret
-            name: cert-local-leonvdbeek-com
+            name: cert-kube-leonvdbeek-com
       allowedRoutes:
         namespaces:
           from: All
     - protocol: HTTPS
       port: 443
       name: https-domain-gateway
-      hostname: "local.leonvdbeek.com"
+      hostname: "kube.leonvdbeek.com"
       tls:
         certificateRefs:
           - kind: Secret
-            name: cert-local-leonvdbeek-com
+            name: cert-kube-leonvdbeek-com
       allowedRoutes:
         namespaces:
           from: All

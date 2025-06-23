@@ -1,17 +1,16 @@
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: cert-local-leonvdbeek-com
+  name: cert-kube-leonvdbeek-com
   namespace: gateway
 spec:
   dnsNames:
-    - "*.local.leonvdbeek.com"
-    - "*.gateway.local.leonvdbeek.com"
+    - "*.kube.leonvdbeek.com"
   issuerRef:
     name: cloudflare-issuer
     kind: Issuer
     group: cert-manager.io
-  secretName: cert-local-leonvdbeek-com
+  secretName: cert-kube-leonvdbeek-com
   usages:
     - digital signature
     - key encipherment

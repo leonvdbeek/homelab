@@ -8,7 +8,7 @@ spec:
     - name: cilium-gateway
       namespace: gateway
   hostnames:
-    - "hubble.local.leonvdbeek.com"
+    - "hubble.kube.leonvdbeek.com"
   rules:
     - matches:
         - path:

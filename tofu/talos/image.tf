@@ -16,7 +16,8 @@ resource "talos_image_factory_schematic" "updated" {
 }
 
 resource "proxmox_virtual_environment_download_file" "this" {
-  node_name    = var.download_node
+  for_each = var.nodes
+  node_name    = each.value.host_node
   content_type = "iso"
   datastore_id = var.image.proxmox_datastore
 
