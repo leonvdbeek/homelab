@@ -4,7 +4,7 @@ namespace: auth
 resources:
 - database.yaml
 - ns.yaml
-- htt-proute.yaml
+- http-route.yaml
 # - outpost-externalsecret.yaml
 # - referencegrant.yaml
 # - extra
