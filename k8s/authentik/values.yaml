@@ -1,11 +1,12 @@
 ---
-# authentik:
+authentik:
+  secret_key: "rhO3Em1dw1XsTFt434xaH38X0WRFe2NhvzFVUL8Nd7fF8EEWvWPLG3xExC1qYG4fi2Y50sEut+OfTN4P"
   # This sends anonymous usage-data, stack traces on errors and
   # performance data to authentik.error-reporting.a7k.io, and is fully opt-in
-  # error_reporting:
-  #   enabled: true
-  # postgresql:
-  #   password: "ThisIsNotASecurePassword"
+  error_reporting:
+    enabled: true
+  postgresql:
+    password: "ThisIsNotASecurePassword"
 
 # server:
 #   ingress:
@@ -13,16 +14,16 @@
 #     hosts:
 #       - authentik.domain.tld
 
-# postgresql:
-#   enabled: true
-#   auth:
-#     password: "ThisIsNotASecurePassword"
+postgresql:
+  enabled: true
+  auth:
+    password: "ThisIsNotASecurePassword"
 
 redis:
   enabled: true
 
 ## Globally shared configuration for authentik components.
-global:
+# global:
 #   # -- Provide a name in place of `authentik`
 #   nameOverride: ""
 #   # -- String to fully override `"authentik.fullname"`
@@ -65,25 +66,23 @@ global:
 
 #   # -- Additional volumeMounts to all deployed Deployments. Does not apply to GeoIP
 #   # @default -- `[]` (See [values.yaml])
-  volumeMounts:
-    - name: db-creds
-      mountPath: /secrets/authentik
-      readOnly: true
+#   volumeMounts:
+#     - name: db-creds
+#       mountPath: /secrets/authentik
+#       readOnly: true
 
 #   # -- Additional volumes to all deployed Deployments.
 #   # @default -- `[]` (See [values.yaml])
-  volumes:
-    - name: db-creds
-      secret:
-        secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
+#   volumes:
+#     - name: db-creds
+#       secret:
+#         secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
 
 
 # ## Authentik configuration
-authentik:
-  secret_key: "rhO3Em1dw1XsTFt434xaH38X0WRFe2NhvzFVUL8Nd7fF8EEWvWPLG3xExC1qYG4fi2Y50sEut+OfTN4P"
-
+# authentik:
 #   # -- authentik configuration, will be templated as environment variables
-  # secret_key: "env://AUTHENTIK_SECRET_KEY"
+#   secret_key: "env://AUTHENTIK_SECRET_KEY"
 #   # -- whether to create the authentik configuration secret
 #   enabled: true
 #   # -- Log level for server and worker
@@ -130,12 +129,12 @@ authentik:
 #     environment: "k8s"
 #     # -- Send PII (Personally identifiable information) data to sentry
 #     send_pii: false
-  postgresql:
-    host: authentik-postgresql
-    name: authentik
-    user: file:///secrets/authentik/username
-    password: file:///secrets/authentik/password
-    port: "5432"
+#   postgresql:
+#     host: authentik-postgresql
+#     name: authentik
+#     user: file:///secrets/authentik/username
+#     password: file:///secrets/authentik/password
+#     port: "5432"
 
 #   redis:
 #     password: "env://AUTHENTIK_REDIS__PASSWORD"
