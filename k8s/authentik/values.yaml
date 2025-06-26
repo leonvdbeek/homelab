@@ -1,10 +1,9 @@
 ---
-authentik:
-  secret_key: "rhO3Em1dw1XsTFt434xaH38X0WRFe2NhvzFVUL8Nd7fF8EEWvWPLG3xExC1qYG4fi2Y50sEut+OfTN4P"
+# authentik:
   # This sends anonymous usage-data, stack traces on errors and
   # performance data to authentik.error-reporting.a7k.io, and is fully opt-in
-  error_reporting:
-    enabled: true
+  # error_reporting:
+  #   enabled: true
   # postgresql:
   #   password: "ThisIsNotASecurePassword"
 
@@ -23,7 +22,7 @@ redis:
   enabled: true
 
 ## Globally shared configuration for authentik components.
-# global:
+global:
 #   # -- Provide a name in place of `authentik`
 #   nameOverride: ""
 #   # -- String to fully override `"authentik.fullname"`
@@ -80,9 +79,11 @@ redis:
 
 
 # ## Authentik configuration
-# authentik:
+authentik:
+  secret_key: "rhO3Em1dw1XsTFt434xaH38X0WRFe2NhvzFVUL8Nd7fF8EEWvWPLG3xExC1qYG4fi2Y50sEut+OfTN4P"
+
 #   # -- authentik configuration, will be templated as environment variables
-#   secret_key: "env://AUTHENTIK_SECRET_KEY"
+  # secret_key: "env://AUTHENTIK_SECRET_KEY"
 #   # -- whether to create the authentik configuration secret
 #   enabled: true
 #   # -- Log level for server and worker
