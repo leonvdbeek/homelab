@@ -1,6 +1,6 @@
 ---
 authentik:
-  secret_key: "asdfghjklqwertyuiopzxcvbnmasdfghjklqwertyuiopzxcvb"
+  secret_key: "rhO3Em1dw1XsTFt434xaH38X0WRFe2NhvzFVUL8Nd7fF8EEWvWPLG3xExC1qYG4fi2Y50sEut+OfTN4P"
   # This sends anonymous usage-data, stack traces on errors and
   # performance data to authentik.error-reporting.a7k.io, and is fully opt-in
   error_reporting:
