@@ -5,8 +5,8 @@ authentik:
   # performance data to authentik.error-reporting.a7k.io, and is fully opt-in
   error_reporting:
     enabled: true
-  postgresql:
-    password: "ThisIsNotASecurePassword"
+  # postgresql:
+  #   password: "ThisIsNotASecurePassword"
 
 # server:
 #   ingress:
@@ -14,10 +14,10 @@ authentik:
 #     hosts:
 #       - authentik.domain.tld
 
-postgresql:
-  enabled: true
-  auth:
-    password: "ThisIsNotASecurePassword"
+# postgresql:
+#   enabled: true
+#   auth:
+#     password: "ThisIsNotASecurePassword"
 
 redis:
   enabled: true
@@ -66,17 +66,17 @@ redis:
 
 #   # -- Additional volumeMounts to all deployed Deployments. Does not apply to GeoIP
 #   # @default -- `[]` (See [values.yaml])
-#   volumeMounts:
-#     - name: db-creds
-#       mountPath: /secrets/authentik
-#       readOnly: true
+  volumeMounts:
+    - name: db-creds
+      mountPath: /secrets/authentik
+      readOnly: true
 
 #   # -- Additional volumes to all deployed Deployments.
 #   # @default -- `[]` (See [values.yaml])
-#   volumes:
-#     - name: db-creds
-#       secret:
-#         secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
+  volumes:
+    - name: db-creds
+      secret:
+        secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
 
 
 # ## Authentik configuration
@@ -129,12 +129,12 @@ redis:
 #     environment: "k8s"
 #     # -- Send PII (Personally identifiable information) data to sentry
 #     send_pii: false
-#   postgresql:
-#     host: authentik-postgresql
-#     name: authentik
-#     user: file:///secrets/authentik/username
-#     password: file:///secrets/authentik/password
-#     port: "5432"
+  postgresql:
+    host: authentik-postgresql
+    name: authentik
+    user: file:///secrets/authentik/username
+    password: file:///secrets/authentik/password
+    port: "5432"
 
 #   redis:
 #     password: "env://AUTHENTIK_REDIS__PASSWORD"
