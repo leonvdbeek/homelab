@@ -37,9 +37,9 @@ spec:
         namespace: infrastructure-system
         server: https://kubernetes.default.svc
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
+        # automated:
+        #   prune: true
+        #   selfHeal: true
         retry:
           limit: 1
           backoff:

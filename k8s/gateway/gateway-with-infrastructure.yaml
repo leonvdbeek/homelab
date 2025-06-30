@@ -7,9 +7,9 @@ metadata:
     cert-manager.io/issuer: cloudflare-issuer
 spec:
   gatewayClassName: cilium
-  infrastructure:
-    annotations:
-      io.cilium/lb-ipam-ips: "10.0.0.20"
+  # infrastructure:
+  #   annotations:
+  #     io.cilium/lb-ipam-ips: "10.0.0.20"
   listeners:
     - protocol: HTTPS
       port: 443
