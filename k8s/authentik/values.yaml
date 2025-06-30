@@ -8,7 +8,7 @@ authentik:
   # postgresql:
   #   password: "ThisIsNotASecurePassword"
   postgresql:
-    host: authentik-postgresql
+    host: authentik-postgresql-zalando
     name: authentik
     user: file:///secrets/authentik/username
     password: file:///secrets/authentik/password
@@ -23,7 +23,7 @@ authentik:
   volumes:
     - name: db-creds
       secret:
-        secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
+        secretName: authentik-user.authentik-postgresql-zalando.credentials.postgresql.acid.zalan.do
 
 postgresql:
   enabled: false
