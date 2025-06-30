@@ -5,19 +5,28 @@ authentik:
   # performance data to authentik.error-reporting.a7k.io, and is fully opt-in
   error_reporting:
     enabled: true
+  # postgresql:
+  #   password: "ThisIsNotASecurePassword"
   postgresql:
-    password: "ThisIsNotASecurePassword"
+    host: authentik-postgresql
+    name: authentik
+    user: file:///secrets/authentik/username
+    password: file:///secrets/authentik/password
+    port: "5432"
+  volumeMounts:
+    - name: db-creds
+      mountPath: /secrets/authentik
+      readOnly: true
 
-# server:
-#   ingress:
-#     enabled: true
-#     hosts:
-#       - authentik.domain.tld
+#   # -- Additional volumes to all deployed Deployments.
+#   # @default -- `[]` (See [values.yaml])
+  volumes:
+    - name: db-creds
+      secret:
+        secretName: authentik-user.authentik-postgresql.credentials.postgresql.acid.zalan.do
 
 postgresql:
-  enabled: true
-  auth:
-    password: "ThisIsNotASecurePassword"
+  enabled: false
 
 redis:
   enabled: true
@@ -71,8 +80,8 @@ redis:
 #       mountPath: /secrets/authentik
 #       readOnly: true
 
-#   # -- Additional volumes to all deployed Deployments.
-#   # @default -- `[]` (See [values.yaml])
+# #   # -- Additional volumes to all deployed Deployments.
+# #   # @default -- `[]` (See [values.yaml])
 #   volumes:
 #     - name: db-creds
 #       secret:
