@@ -30,6 +30,10 @@ postgresql:
 
 redis:
   enabled: true
+  master:
+    persistence:
+      enabled: true
+      size: 1Gi
 
 ## Globally shared configuration for authentik components.
 # global:
