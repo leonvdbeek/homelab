@@ -42,7 +42,7 @@ module "talos" {
       mac_address   = "bc:24:11:64:5b:cb"
       vm_id         = 8101
       cpu           = 4
-      ram_dedicated = 7168
+      ram_dedicated = 6144
       datastore_id  = "local-zfs"
       update        = false
       igpu          = false
