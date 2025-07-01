@@ -7,8 +7,8 @@ resources:
 - cert-manager
 - cilium
 - gateway
-# - argocd
+- argocd
 - longhorn
 - postgresql
-# - authentik
+- authentik
 - https://github.com/bitnami-labs/sealed-secrets/releases/download/v0.30.0/controller.yaml

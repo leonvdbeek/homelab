@@ -13,5 +13,12 @@ helmCharts:
     namespace: postgres-operator
     valuesFile: values.yaml
     includeCRDs: true
+  # - name: postgres-operator-ui
+  #   repo: https://opensource.zalando.com/postgres-operator/charts/postgres-operator-ui
+  #   version: v1.14.0
+  #   releaseName: zalando
+  #   namespace: postgres-operator
+  #   # valuesFile: values.yaml
+  #   includeCRDs: true
 generatorOptions:
   disableNameSuffixHash: true

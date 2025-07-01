@@ -99,7 +99,7 @@ configKubernetes:
   # - "SYS_NICE"
 
   # default DNS domain of K8s cluster where operator is running
-  cluster_domain: kube.leonvdbkeek.com
+  cluster_domain: kube.leonvdbeek.com
   # additional labels assigned to the cluster objects
   cluster_labels:
     application: spilo
