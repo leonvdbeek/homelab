@@ -7,7 +7,6 @@ resources:
   - https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_udproutes.yaml # renovate: github-releases=kubernetes-sigs/gateway-api
   - https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.3.0/config/crd/experimental/gateway.networking.k8s.io_tcproutes.yaml # renovate: github-releases=kubernetes-sigs/gateway-api- https://raw.githubusercontent.com/kubernetes-sigs/gateway-api/v1.1.0/config/crd/experimental/gateway.networking.k8s.io_tlsroutes.yaml # renovate: github-releases=kubernetes-sigs/gateway-api
   - ns.yaml
-  - gateway-class.yaml
   - cert-kube-leonvdbeek-com.yaml
   - cloudflare-api-token-secret.yaml
   - cloudflare-issuer.yaml
