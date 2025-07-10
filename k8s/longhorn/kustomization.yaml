@@ -15,4 +15,4 @@ helmCharts:
     releaseName: longhorn
     repo: https://charts.longhorn.io
     valuesFile: values.yaml
-    version: 1.8.1 # renovate: github-releases=longhorn/longhorn
+    version: 1.8.2 # renovate: github-releases=longhorn/longhorn
