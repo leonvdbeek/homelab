@@ -1,0 +1,8 @@
+#!ipxe
+echo
+echo === LOCAL AUTOEXEC START ===
+echo Loading menu from 192.168.4.73 ...
+chain tftp://192.168.4.73/menu.ipxe
+echo === Chain returned, errno=${errno} ===
+sleep 5
+exit

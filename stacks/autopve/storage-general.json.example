@@ -1,0 +1,59 @@
+{
+  "config_100": {
+    "Default": {
+      "global": {
+        "keyboard": "en-us",
+        "country": "nl",
+        "fqdn": "pve.local.leonvdbeek.com",
+        "mailto": "you@example.com",
+        "timezone": "Europe/Amsterdam",
+        "root-password": "__REPLACE_ME__",
+        "root-ssh-keys": [
+          "ssh-ed25519 AAAA__YOUR_PUBLIC_KEY__ user@host"
+        ]
+      },
+      "network": {
+        "source": "from-dhcp"
+      },
+      "disk-setup": {
+        "filesystem": "ext4",
+        "disk-list": [
+          "sda"
+        ],
+        "lvm.hdsize": 150
+      },
+      "post-installation-webhook": {
+        "url": "http://192.168.4.73:8282/playbook/register-netbox"
+      },
+      "first-boot": {
+        "source": "from-url",
+        "ordering": "network-online",
+        "url": "http://192.168.4.73:8282/files/setup-pve.sh"
+      }
+    },
+    "lenovo-01": {
+      "must_contain": [
+        "6c:4b:90:27:30:66"
+      ],
+      "global": {
+        "fqdn": "lenovo-01.local.leonvdbeek.com"
+      }
+    },
+    "lenovo-02": {
+      "must_contain": [
+        "6c:4b:90:27:2f:d5"
+      ],
+      "global": {
+        "fqdn": "lenovo-02.local.leonvdbeek.com"
+      }
+    },
+    "lenovo-03": {
+      "must_contain": [
+        "6c:4b:90:27:37:11"
+      ],
+      "global": {
+        "fqdn": "lenovo-03.local.leonvdbeek.com"
+      }
+    }
+  }
+}

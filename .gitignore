@@ -1,0 +1,7 @@
+.env
+*.bak
+.DS_Store
+
+# Keep .example files; ignore the real ones
+stacks/**/storage-general.json
+stacks/**/docker-compose.override.yml

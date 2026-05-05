@@ -1,0 +1,10 @@
+services:
+  netbox:
+    ports:
+      - "8484:8080"
+    environment:
+      SKIP_SUPERUSER: "false"
+      SUPERUSER_NAME: "admin"
+      SUPERUSER_EMAIL: "you@example.com"
+      SUPERUSER_PASSWORD: "${NETBOX_SUPERUSER_PASSWORD}"
+      SUPERUSER_API_TOKEN: "${NETBOX_BOOTSTRAP_TOKEN}"

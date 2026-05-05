@@ -1,0 +1,17 @@
+services:
+  autopve:
+    build:
+      context: .
+    image: autopve-local:latest
+    container_name: autopve
+    ports:
+      - 8282:8080
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /home/leon/portainer/autopve/data:/app/data
+      - /home/leon/portainer/autopve/logs:/app/logs
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - VERBOSE_LOGGING=TRUE
+    restart: unless-stopped
