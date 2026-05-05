@@ -12,7 +12,6 @@
     netbox_token: "{{ lookup("env", "NETBOX_TOKEN") }}"
     site_name: "Home"
     role_name: "Hypervisor"
-    pve_root_password: "{{ lookup("env", "PVE_ROOT_PASSWORD") }}"
 
   tasks:
     - name: Persist webhook payload for debugging
@@ -109,7 +108,6 @@
             name: target_pve
             ansible_host: "{{ target_ip }}"
             ansible_user: root
-            ansible_password: "{{ pve_root_password }}"
             ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10"
             groups: pve_new
         - ansible.builtin.wait_for_connection:
