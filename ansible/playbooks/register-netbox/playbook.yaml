@@ -1,6 +1,9 @@
 ---
-# Pre-play: dump payload, derive target IP, and dynamically add the new PVE host to the inventory.
-- name: Discover and register target PVE host
+# Webhook-first registration — uses the data the Proxmox installer sends in the
+# post-installation-webhook payload as the primary source. SSH back to the host
+# is OPTIONAL enrichment for memory + BIOS strings; if it fails we still ship
+# the rest. This makes registration robust to host reboot timing.
+- name: Register newly-installed Proxmox host in NetBox (webhook-first)
   hosts: localhost
   connection: local
   gather_facts: false
@@ -19,109 +22,120 @@
         mode: "0644"
       ignore_errors: true
 
-    - name: Resolve target IP from PVE 9 webhook
+    - name: Pick management interface from webhook
       ansible.builtin.set_fact:
-        # PVE 9 puts the management address in network-interfaces[].address as CIDR.
-        # Prefer the entry flagged is-management, fall back to the first interface.
-        nic_list: "{{ system_info['network-interfaces'] | default(system_info.network_interfaces | default([])) }}"
-        mgmt_addrs: "{{ (system_info['network-interfaces'] | default(system_info.network_interfaces | default([]))) | selectattr('is-management', 'defined') | selectattr('is-management', 'equalto', true) | map(attribute='address') | list }}"
-        any_addrs: "{{ (system_info['network-interfaces'] | default(system_info.network_interfaces | default([]))) | map(attribute='address') | reject('equalto', '') | list }}"
+        nics_raw: "{{ system_info['network-interfaces'] | default([]) }}"
 
-    - name: Pick target IP (strip /CIDR)
+    - name: Extract management iface (is-management==true OR first non-empty address)
       ansible.builtin.set_fact:
-        target_ip: "{{ (host_ip | default(((mgmt_addrs + any_addrs) | first | default('')) | regex_replace('/.*$', ''))) }}"
+        mgmt_iface: >-
+          {{ (nics_raw | selectattr('is-management', 'defined')
+                       | selectattr('is-management', 'equalto', true)
+                       | list | first)
+             | default(((nics_raw | selectattr('address', 'defined')
+                                  | rejectattr('address', 'equalto', '')
+                                  | list) | first) | default((nics_raw | first) | default({}))) }}
 
-    - name: Fail early if no target IP
-      ansible.builtin.assert:
-        that: target_ip | length > 0
-        fail_msg: "Cannot determine target host IP. Pass via -e host_ip=X.X.X.X or have it in system_info.network.address."
-
-    - name: Add the new PVE host to a runtime inventory group
-      ansible.builtin.add_host:
-        name: target_pve
-        ansible_host: "{{ target_ip }}"
-        ansible_user: root
-        ansible_password: "{{ pve_root_password }}"
-        ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-        groups: pve_new
-        netbox_url: "{{ netbox_url }}"
-        netbox_token: "{{ netbox_token }}"
-        site_name: "{{ site_name }}"
-        role_name: "{{ role_name }}"
-
-# Main play: gather authoritative facts from the new host and write them to NetBox.
-# All NetBox calls are delegated back to localhost.
-- name: Inventory and register the host in NetBox
-  hosts: pve_new
-  gather_facts: false
-  tasks:
-    - name: Wait for SSH on target host (host may still be rebooting after install)
-      ansible.builtin.wait_for_connection:
-        timeout: 600
-        delay: 10
-        sleep: 10
-
-    - name: Gather facts now that SSH is up
-      ansible.builtin.setup:
-    - name: Gather block-device facts (lsblk JSON)
-      ansible.builtin.command: lsblk -dnbo NAME,SIZE,VENDOR,MODEL,SERIAL,TYPE -J
-      register: lsblk_raw
-      changed_when: false
-
-    - name: Build device facts
+    - name: Webhook-derived facts
       ansible.builtin.set_fact:
-        manufacturer_name: "{{ ansible_system_vendor | default('Unknown') | trim }}"
-        model_name: "{{ (ansible_product_version | default(ansible_product_name | default('Unknown'))) | trim }}"
-        device_serial: "{{ (ansible_product_serial | default('') | trim) }}"
-        device_uuid: "{{ ansible_product_uuid | default('') | trim }}"
-        cpu_model: "{{ ansible_processor[2] | default(ansible_processor[1] | default('')) | trim }}"
-        cpu_sockets: "{{ ansible_processor_count | default(1) | int }}"
-        cpu_cores: "{{ ansible_processor_cores | default(0) | int }}"
-        memory_gb: "{{ (ansible_memtotal_mb | default(0) | int / 1024) | round(0, 'floor') | int }}"
-        bios_vendor: "{{ ansible_bios_vendor | default('') | trim }}"
-        bios_version: "{{ ansible_bios_version | default('') | trim }}"
-        chassis_asset_tag: "{{ ansible_chassis_asset_tag | default('') | trim }}"
-        pve_version: "{{ system_info.product.version | default('') | trim }}"
-        primary_ipv4: "{{ ansible_default_ipv4.address | default(ansible_host) }}"
-        primary_iface: "{{ ansible_default_ipv4.interface | default('') }}"
-        all_disks: "{{ (lsblk_raw.stdout | from_json).blockdevices | selectattr('type','equalto','disk') | list }}"
+        cpu_model: "{{ system_info['cpu-info'].model | default('') }}"
+        cpu_sockets: "{{ system_info['cpu-info'].sockets | default(0) | int }}"
+        cpu_cores: "{{ system_info['cpu-info'].cores | default(0) | int }}"
+        device_serial: "{{ system_info.dmi.system.serial | default('') }}"
+        device_uuid: "{{ system_info.dmi.system.uuid | default('') }}"
+        sys_sku: "{{ system_info.dmi.system.sku | default('') }}"
+        sys_dmi_name: "{{ system_info.dmi.system.name | default('') }}"
+        chassis_asset: "{{ system_info.dmi.chassis.asset_tag | default('') }}"
+        webhook_fqdn: "{{ system_info.fqdn | default('') }}"
+        pve_version: "{{ system_info.product.version | default('') }}"
+        target_ip_cidr: "{{ mgmt_iface.address | default('') }}"
+
+    - name: Strip /CIDR
+      ansible.builtin.set_fact:
+        target_ip: "{{ target_ip_cidr.split('/') | first | default('') }}"
+        manufacturer_name: "{{ ((sys_sku.split('_') | first) | default('Unknown', true)) | upper }}"
+        model_name: >-
+          {{ (sys_sku.split('FM_') | last | trim) if 'FM_' in sys_sku
+             else (sys_dmi_name | default('Unknown') | trim) }}
+        device_name: >-
+          {{ (webhook_fqdn.split('.') | first) if webhook_fqdn | length > 0
+             else ('pve-' ~ device_serial if device_serial
+                   else ('pve-' ~ ((mgmt_iface.mac | default('')) | replace(':','')))) }}
+
+    - name: Build NIC list for NetBox
+      ansible.builtin.set_fact:
         nics: |-
           {%- set out = [] -%}
-          {%- for ifname in ansible_interfaces | sort -%}
-          {%-   set fact = ('ansible_' ~ ifname | replace('-', '_')) -%}
-          {%-   if hostvars[inventory_hostname][fact] is defined -%}
-          {%-     set i = hostvars[inventory_hostname][fact] -%}
-          {%-     if ifname != 'lo' and i.macaddress is defined -%}
-          {%-       set _ = out.append({
-                      'name': ifname,
-                      'mac': i.macaddress,
-                      'speed': i.speed | default(1000) | int,
-                      'enabled': (i.active | default(false)) | bool,
-                      'type': i.type | default('ether'),
-                      'ipv4': i.ipv4 | default({}),
-                      }) -%}
-          {%-     endif -%}
-          {%-   endif -%}
+          {%- for n in nics_raw -%}
+          {%-   set u = n.get('udev-properties', {}) -%}
+          {%-   set _ = out.append({
+                  'name': n.name,
+                  'mac': n.mac | default(''),
+                  'address': n.address | default(''),
+                  'is_mgmt': n['is-management'] | default(false),
+                  'vendor': u.get('ID_VENDOR_FROM_DATABASE', ''),
+                  'model': u.get('ID_MODEL_FROM_DATABASE', '') }) -%}
           {%- endfor -%}
           {{ out }}
 
-    - name: Build device name (webhook FQDN wins; else serial; else MAC)
+    - name: Build disk list for NetBox
       ansible.builtin.set_fact:
-        webhook_fqdn: "{{ (system_info.fqdn | default('')) }}"
-        device_name: "{{ ((system_info.fqdn | default('')).split('.') | first) | default('pve-' ~ (device_serial if device_serial else (nics | map(attribute='mac') | first | default('00:00:00:00:00:00') | replace(':',''))), true) }}"
+        disks: |-
+          {%- set out = [] -%}
+          {%- for d in system_info.disks | default([]) -%}
+          {%-   set u = d.get('udev-properties', {}) -%}
+          {%-   set _ = out.append({
+                  'name': (u.get('DEVNAME', '/dev/disk') | basename),
+                  'model': (u.get('ID_MODEL_FROM_DATABASE', '') or u.get('ID_MODEL', '')) | replace('_', ' '),
+                  'serial': u.get('ID_SERIAL_SHORT', ''),
+                  'vendor': u.get('ID_VENDOR_FROM_DATABASE', '') or (u.get('ID_BUS', '') | upper),
+                  'size_bytes': d.size | default(0) | int,
+                  'is_boot': d.get('is-bootdisk', false) }) -%}
+          {%- endfor -%}
+          {{ out }}
 
-    - name: Show summary
+    - name: Webhook-derived summary
       ansible.builtin.debug:
         msg: >-
-          {{ device_name }}: {{ manufacturer_name }} {{ model_name }},
-          {{ cpu_cores }}C/{{ cpu_sockets }}S {{ cpu_model }},
-          {{ memory_gb }}GB,
-          {{ nics | length }} NICs,
-          {{ all_disks | length }} disks,
-          primary={{ primary_ipv4 }} on {{ primary_iface }}
+          {{ device_name }} | {{ manufacturer_name }} {{ model_name }} |
+          {{ cpu_cores }}C/{{ cpu_sockets }}S {{ cpu_model }} |
+          {{ nics | length }} NICs | {{ disks | length }} disks |
+          mgmt={{ target_ip }}/{{ target_ip_cidr.split('/')[1] | default('') }}
 
+    # ─── Optional SSH enrichment for fields the webhook doesn't have ───
+    - name: Try SSH enrichment (memory + BIOS strings)
+      block:
+        - ansible.builtin.add_host:
+            name: target_pve
+            ansible_host: "{{ target_ip }}"
+            ansible_user: root
+            ansible_password: "{{ pve_root_password }}"
+            ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o ConnectTimeout=10"
+            groups: pve_new
+        - ansible.builtin.wait_for_connection:
+            timeout: 600
+            delay: 10
+            sleep: 15
+          delegate_to: target_pve
+        - ansible.builtin.setup:
+          delegate_to: target_pve
+          delegate_facts: true
+        - ansible.builtin.set_fact:
+            memory_gb: "{{ ((hostvars['target_pve'].ansible_memtotal_mb | default(0) | int) / 1024) | round(0, 'floor') | int }}"
+            bios_vendor: "{{ hostvars['target_pve'].ansible_bios_vendor | default('') | trim }}"
+            bios_version: "{{ hostvars['target_pve'].ansible_bios_version | default('') | trim }}"
+            ssh_enriched: true
+      rescue:
+        - ansible.builtin.set_fact:
+            memory_gb: 0
+            bios_vendor: ""
+            bios_version: ""
+            ssh_enriched: false
+        - ansible.builtin.debug:
+            msg: "SSH enrichment skipped/failed — registering webhook data only"
+
+    # ─── NetBox writes (all on localhost; no SSH dependency) ───
     - name: Ensure manufacturer
-      delegate_to: localhost
       netbox.netbox.netbox_manufacturer:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -130,7 +144,6 @@
         state: present
 
     - name: Ensure device-type
-      delegate_to: localhost
       netbox.netbox.netbox_device_type:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -141,8 +154,7 @@
           u_height: 1
         state: present
 
-    - name: Register/update device with full metadata
-      delegate_to: localhost
+    - name: Register/update device
       netbox.netbox.netbox_device:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -153,7 +165,7 @@
           device_role: "{{ role_name }}"
           site: "{{ site_name }}"
           serial: "{{ device_serial }}"
-          asset_tag: "{{ chassis_asset_tag if chassis_asset_tag else omit }}"
+          asset_tag: "{{ chassis_asset if chassis_asset else omit }}"
           status: "active"
           tags: ["auto-registered", "pve"]
           custom_fields:
@@ -164,11 +176,11 @@
             bios_vendor: "{{ bios_vendor }}"
             bios_version: "{{ bios_version }}"
             system_uuid: "{{ device_uuid }}"
+            system_sku: "{{ sys_sku }}"
             pve_version: "{{ pve_version }}"
         state: present
 
-    - name: Add network interfaces
-      delegate_to: localhost
+    - name: Add physical NICs
       netbox.netbox.netbox_device_interface:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -176,16 +188,25 @@
         data:
           device: "{{ device_name }}"
           name: "{{ item.name }}"
-          type: >-
-            {{ 'bridge' if item.type == 'bridge'
-               else ('virtual' if item.name.startswith('tap') or item.name.startswith('veth') or item.name.startswith('fwbr') or item.name.startswith('fwln') or item.name.startswith('fwpr')
-               else ('10gbase-t' if (item.speed | int) > 1000 else '1000base-t')) }}
-          enabled: "{{ item.enabled }}"
+          type: "1000base-t"
+          enabled: true
+          description: "{{ (item.vendor ~ ' ' ~ item.model) | trim }}"
         state: present
       loop: "{{ nics }}"
 
-    - name: Attach MAC addresses
-      delegate_to: localhost
+    - name: Add vmbr0 (PVE management bridge)
+      netbox.netbox.netbox_device_interface:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          device: "{{ device_name }}"
+          name: "vmbr0"
+          type: "bridge"
+          enabled: true
+        state: present
+
+    - name: Attach MAC addresses to NICs
       netbox.netbox.netbox_mac_address:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -197,46 +218,49 @@
             name: "{{ item.name }}"
         state: present
       loop: "{{ nics }}"
-      when: item.mac is defined and item.mac | length > 0
+      when: item.mac | length > 0
 
-    - name: Register IPv4 addresses on interfaces
-      delegate_to: localhost
+    - name: Attach management MAC also to vmbr0
+      netbox.netbox.netbox_mac_address:
+        netbox_url: "{{ netbox_url }}"
+        netbox_token: "{{ netbox_token }}"
+        validate_certs: false
+        data:
+          mac_address: "{{ mgmt_iface.mac }}"
+          assigned_object:
+            device: "{{ device_name }}"
+            name: "vmbr0"
+        state: present
+      when: mgmt_iface.mac is defined and mgmt_iface.mac | length > 0
+
+    - name: Register management IP on vmbr0
       netbox.netbox.netbox_ip_address:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
         validate_certs: false
         data:
-          address: "{{ item.ipv4.address }}/{{ item.ipv4.prefix | default(24) }}"
+          address: "{{ target_ip_cidr }}"
           status: active
           assigned_object:
             device: "{{ device_name }}"
-            name: "{{ item.name }}"
+            name: "vmbr0"
         state: present
-      loop: "{{ nics }}"
-      when:
-        - item.ipv4 is defined
-        - item.ipv4.address is defined
-        - item.ipv4.address | length > 0
+      when: target_ip_cidr | length > 0
 
-    - name: Set primary IPv4 on device
-      delegate_to: localhost
+    - name: Look up device id (for primary IP patch)
       ansible.builtin.uri:
         url: "{{ netbox_url }}/api/dcim/devices/?name={{ device_name }}"
-        headers:
-          Authorization: "Bearer {{ netbox_token }}"
+        headers: { Authorization: "Bearer {{ netbox_token }}" }
       register: dev_lookup
 
-    - name: Look up primary IP id
-      delegate_to: localhost
+    - name: Look up IP id
       ansible.builtin.uri:
-        url: "{{ netbox_url }}/api/ipam/ip-addresses/?address={{ primary_ipv4 }}"
-        headers:
-          Authorization: "Bearer {{ netbox_token }}"
+        url: "{{ netbox_url }}/api/ipam/ip-addresses/?address={{ target_ip_cidr }}"
+        headers: { Authorization: "Bearer {{ netbox_token }}" }
       register: ip_lookup
-      when: primary_ipv4 | length > 0
+      when: target_ip_cidr | length > 0
 
-    - name: Patch device.primary_ip4
-      delegate_to: localhost
+    - name: Set primary_ip4 on device
       ansible.builtin.uri:
         url: "{{ netbox_url }}/api/dcim/devices/{{ dev_lookup.json.results[0].id }}/"
         method: PATCH
@@ -244,8 +268,7 @@
           Authorization: "Bearer {{ netbox_token }}"
           Content-Type: "application/json"
         body_format: json
-        body:
-          primary_ip4: "{{ ip_lookup.json.results[0].id }}"
+        body: { primary_ip4: "{{ ip_lookup.json.results[0].id }}" }
         status_code: [200]
       when:
         - ip_lookup is defined
@@ -254,7 +277,6 @@
         - dev_lookup.json.count | default(0) > 0
 
     - name: Add disks as inventory items
-      delegate_to: localhost
       netbox.netbox.netbox_inventory_item:
         netbox_url: "{{ netbox_url }}"
         netbox_token: "{{ netbox_token }}"
@@ -262,8 +284,15 @@
         data:
           device: "{{ device_name }}"
           name: "{{ item.name }}"
-          serial: "{{ (item.serial | default('')) | trim }}"
-          part_id: "{{ (item.model | default('')) | trim }}"
-          description: "{{ (item.vendor | default('')) | trim }} | {{ ((item.size | default(0) | int) / 1073741824) | round(0, 'floor') | int }} GB"
+          serial: "{{ item.serial }}"
+          part_id: "{{ item.model }}"
+          description: "{{ item.vendor }} | {{ (item.size_bytes / 1073741824) | round(0, 'floor') | int }} GB{{ ' (boot)' if item.is_boot else '' }}"
         state: present
-      loop: "{{ all_disks }}"
+      loop: "{{ disks }}"
+
+    - name: Final summary
+      ansible.builtin.debug:
+        msg: >-
+          NetBox: {{ device_name }} | {{ manufacturer_name }} {{ model_name }} |
+          mgmt={{ target_ip }} | {{ nics | length }} NICs | {{ disks | length }} disks |
+          ssh_enriched={{ ssh_enriched }}
