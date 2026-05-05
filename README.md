@@ -135,9 +135,9 @@ The autopve flow registers each host once on first install. To re-pull live fact
 ```
 cd ansible
 ansible-galaxy collection install -r requirements.yml          # one-time
-export NETBOX_URL=http://<host>:8484
-export NETBOX_TOKEN=nbt_<key>.<token>
-export PVE_ROOT_PASSWORD=<pw>
+
+# Load secrets from the gitignored .env at the repo root
+set -a; source ../.env; set +a
 
 ansible-playbook playbooks/site.yml                            # all hosts
 ansible-playbook playbooks/site.yml -l lenovo-02               # one host
