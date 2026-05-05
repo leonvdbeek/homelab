@@ -1,0 +1,9 @@
+galaxy_info:
+  author: Léon van de Beek
+  description: Base role applied to every PVE host in the homelab.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Debian
+      versions: [trixie]
+dependencies: []

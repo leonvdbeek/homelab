@@ -1,0 +1,23 @@
+---
+# NetBox connection (read from env so the repo stays secret-free)
+netbox_url: "{{ lookup('env', 'NETBOX_URL') }}"
+netbox_token: "{{ lookup('env', 'NETBOX_TOKEN') }}"
+
+# Where the device should land in NetBox
+netbox_site: "Home"
+netbox_role: "Hypervisor"
+netbox_tags:
+  - "auto-registered"
+  - "pve"
+
+# Filter for which interfaces to report — drop VM-related virtuals
+nb_iface_skip_prefixes:
+  - "lo"
+  - "tap"
+  - "veth"
+  - "fwbr"
+  - "fwln"
+  - "fwpr"
+  - "lxcbr"
+  - "docker"
+  - "br-"

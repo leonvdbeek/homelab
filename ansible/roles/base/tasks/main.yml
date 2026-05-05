@@ -1,0 +1,7 @@
+---
+# Base role: every task file is independently idempotent so it can be added /
+# removed without affecting the others. Add new ones here as you grow the role.
+
+- name: NetBox — register / refresh device record
+  ansible.builtin.import_tasks: netbox-register.yml
+  tags: [netbox, base]

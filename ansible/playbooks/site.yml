@@ -1,0 +1,6 @@
+---
+- name: Apply base config to all Proxmox hosts
+  hosts: pve_hosts
+  gather_facts: true
+  roles:
+    - base

@@ -1,0 +1,206 @@
+---
+# Refresh the host's NetBox record from live Ansible facts. Idempotent —
+# safe to run on every play, will update what's drifted and no-op the rest.
+# Runs against the target host (gather_facts must be true) but every NetBox
+# call is delegated to localhost.
+
+- name: Run lsblk for authoritative disk list
+  ansible.builtin.command: lsblk -dnbo NAME,SIZE,VENDOR,MODEL,SERIAL,TYPE -J
+  register: nb_lsblk
+  changed_when: false
+
+- name: Build NetBox facts from gathered data
+  ansible.builtin.set_fact:
+    nb_device_name: "{{ inventory_hostname }}"
+    nb_manufacturer: "{{ ansible_system_vendor | default('Unknown') | trim }}"
+    nb_model: "{{ ansible_product_version | default(ansible_product_name | default('Unknown')) | trim }}"
+    nb_serial: "{{ ansible_product_serial | default('') | trim }}"
+    nb_uuid: "{{ ansible_product_uuid | default('') | trim }}"
+    nb_chassis_asset: "{{ ansible_chassis_asset_tag | default('') | trim }}"
+    nb_cpu_model: "{{ (ansible_processor[2] | default(ansible_processor[1] | default(''))) | trim }}"
+    nb_cpu_sockets: "{{ ansible_processor_count | default(1) | int }}"
+    nb_cpu_cores: "{{ ansible_processor_cores | default(0) | int }}"
+    nb_memory_gb: "{{ (ansible_memtotal_mb | default(0) | int / 1024) | round(0, 'floor') | int }}"
+    nb_bios_vendor: "{{ ansible_bios_vendor | default('') | trim }}"
+    nb_bios_version: "{{ ansible_bios_version | default('') | trim }}"
+    nb_pve_version: "{{ ansible_local.pveversion | default('') }}"
+    nb_primary_iface: "{{ ansible_default_ipv4.interface | default('') }}"
+    nb_primary_ip: "{{ ansible_default_ipv4.address | default('') }}"
+
+- name: Build interface skip regex
+  ansible.builtin.set_fact:
+    nb_iface_skip_re: "^({{ nb_iface_skip_prefixes | join('|') }})"
+
+- name: Build interface list (skip VM/bridge virtuals)
+  ansible.builtin.set_fact:
+    nb_interfaces: |-
+      {%- set out = [] -%}
+      {%- for ifname in (ansible_interfaces | reject('match', nb_iface_skip_re) | sort) -%}
+      {%-   set fact = vars['ansible_' ~ (ifname | replace('-', '_'))] | default({}) -%}
+      {%-   set _ = out.append({
+              'name': ifname,
+              'mac': fact.macaddress | default(''),
+              'type_facts': fact.type | default('ether'),
+              'speed': fact.speed | default(1000) | int,
+              'active': fact.active | default(false) | bool,
+              'ipv4': fact.ipv4 | default({}),
+            }) -%}
+      {%- endfor -%}
+      {{ out }}
+
+- name: Build disk list from lsblk JSON
+  ansible.builtin.set_fact:
+    nb_disks: "{{ (nb_lsblk.stdout | from_json).blockdevices | selectattr('type','equalto','disk') | list }}"
+
+- name: Show summary (per-host)
+  ansible.builtin.debug:
+    msg: >-
+      [{{ nb_device_name }}] {{ nb_manufacturer }} {{ nb_model }} |
+      sn={{ nb_serial }} | {{ nb_cpu_cores }}C/{{ nb_cpu_sockets }}S | {{ nb_memory_gb }}GB |
+      mgmt={{ nb_primary_ip }} on {{ nb_primary_iface }} |
+      {{ nb_interfaces | length }} ifaces, {{ nb_disks | length }} disks
+
+# ─── NetBox writes (delegated to localhost) ───
+- name: NetBox manufacturer
+  delegate_to: localhost
+  netbox.netbox.netbox_manufacturer:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data: { name: "{{ nb_manufacturer }}" }
+    state: present
+
+- name: NetBox device-type
+  delegate_to: localhost
+  netbox.netbox.netbox_device_type:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      manufacturer: "{{ nb_manufacturer }}"
+      model: "{{ nb_model }}"
+      u_height: 1
+    state: present
+
+- name: NetBox device record
+  delegate_to: localhost
+  netbox.netbox.netbox_device:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      name: "{{ nb_device_name }}"
+      device_type: "{{ nb_model }}"
+      device_role: "{{ netbox_role }}"
+      site: "{{ netbox_site }}"
+      serial: "{{ nb_serial }}"
+      asset_tag: "{{ nb_chassis_asset if (nb_chassis_asset | length > 0 and nb_chassis_asset | upper not in ['NA', 'N/A', 'NONE', 'DEFAULT STRING', 'TO BE FILLED BY O.E.M.']) else omit }}"
+      status: "active"
+      tags: "{{ netbox_tags }}"
+      custom_fields:
+        cpu_model: "{{ nb_cpu_model }}"
+        cpu_sockets: "{{ nb_cpu_sockets }}"
+        cpu_cores: "{{ nb_cpu_cores }}"
+        memory_gb: "{{ nb_memory_gb }}"
+        bios_vendor: "{{ nb_bios_vendor }}"
+        bios_version: "{{ nb_bios_version }}"
+        system_uuid: "{{ nb_uuid }}"
+        pve_version: "{{ nb_pve_version }}"
+    state: present
+
+- name: NetBox interfaces
+  delegate_to: localhost
+  netbox.netbox.netbox_device_interface:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      device: "{{ nb_device_name }}"
+      name: "{{ item.name }}"
+      type: "{{ 'bridge' if item.type_facts == 'bridge' else ('10gbase-t' if (item.speed | int) > 1000 else '1000base-t') }}"
+      enabled: "{{ item.active }}"
+    state: present
+  loop: "{{ nb_interfaces }}"
+
+- name: NetBox MACs on interfaces
+  delegate_to: localhost
+  netbox.netbox.netbox_mac_address:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      mac_address: "{{ item.mac }}"
+      assigned_object:
+        device: "{{ nb_device_name }}"
+        name: "{{ item.name }}"
+    state: present
+  loop: "{{ nb_interfaces }}"
+  when: item.mac | length > 0
+
+- name: NetBox primary IP
+  delegate_to: localhost
+  netbox.netbox.netbox_ip_address:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      address: "{{ item.ipv4.address }}/{{ item.ipv4.prefix | default(24) }}"
+      status: active
+      assigned_object:
+        device: "{{ nb_device_name }}"
+        name: "{{ item.name }}"
+    state: present
+  loop: "{{ nb_interfaces }}"
+  when:
+    - item.ipv4 is defined
+    - item.ipv4.address is defined
+    - item.ipv4.address | length > 0
+
+- name: Look up device id
+  delegate_to: localhost
+  ansible.builtin.uri:
+    url: "{{ netbox_url }}/api/dcim/devices/?name={{ nb_device_name }}"
+    headers: { Authorization: "Bearer {{ netbox_token }}" }
+  register: nb_dev_lookup
+  changed_when: false
+
+- name: Look up primary IP id
+  delegate_to: localhost
+  ansible.builtin.uri:
+    url: "{{ netbox_url }}/api/ipam/ip-addresses/?address={{ nb_primary_ip }}/{{ (nb_interfaces | selectattr('name','equalto', nb_primary_iface) | list | first).ipv4.prefix | default(24) }}"
+    headers: { Authorization: "Bearer {{ netbox_token }}" }
+  register: nb_ip_lookup
+  when: nb_primary_ip | length > 0
+  changed_when: false
+
+- name: Patch device.primary_ip4
+  delegate_to: localhost
+  ansible.builtin.uri:
+    url: "{{ netbox_url }}/api/dcim/devices/{{ nb_dev_lookup.json.results[0].id }}/"
+    method: PATCH
+    headers:
+      Authorization: "Bearer {{ netbox_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body: { primary_ip4: "{{ nb_ip_lookup.json.results[0].id }}" }
+    status_code: [200]
+  when:
+    - nb_ip_lookup is defined
+    - nb_ip_lookup.json is defined
+    - nb_ip_lookup.json.count | default(0) > 0
+    - nb_dev_lookup.json.count | default(0) > 0
+
+- name: NetBox disks (inventory items)
+  delegate_to: localhost
+  netbox.netbox.netbox_inventory_item:
+    netbox_url: "{{ netbox_url }}"
+    netbox_token: "{{ netbox_token }}"
+    validate_certs: false
+    data:
+      device: "{{ nb_device_name }}"
+      name: "{{ item.name }}"
+      serial: "{{ item.serial | default('') }}"
+      part_id: "{{ (item.model | default('')) | trim }}"
+      description: "{{ (item.vendor | default('')) | trim }} | {{ ((item.size | default(0) | int) / 1073741824) | round(0, 'floor') | int }} GB"
+    state: present
+  loop: "{{ nb_disks }}"

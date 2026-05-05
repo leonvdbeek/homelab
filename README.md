@@ -127,3 +127,28 @@ Edit `stacks/autopve/Dockerfile` (`apt-get install …` or `pip install …`), t
 ## Security note
 
 This setup assumes a trusted LAN. Plain HTTP for the answer file means the root password is on the wire during install. For anything internet-exposed, use HTTPS with cert pinning (`proxmox-auto-install-assistant prepare-iso ... --cert-fingerprint`).
+
+## Standalone runbook (refresh data on demand)
+
+The autopve flow registers each host once on first install. To re-pull live facts on demand (after a hardware change, periodically, etc.) there's a separate playbook driven from a static inventory.
+
+```
+cd ansible
+ansible-galaxy collection install -r requirements.yml          # one-time
+export NETBOX_URL=http://<host>:8484
+export NETBOX_TOKEN=nbt_<key>.<token>
+export PVE_ROOT_PASSWORD=<pw>
+
+ansible-playbook playbooks/site.yml                            # all hosts
+ansible-playbook playbooks/site.yml -l lenovo-02               # one host
+ansible-playbook playbooks/site.yml --tags netbox              # one task slice
+```
+
+Inventory lives in `ansible/inventory/`:
+- `hosts.yml` — group memberships
+- `host_vars/<name>.yml` — per-host IP
+
+Add a new host: drop a `host_vars/<name>.yml` with the IP and add the name under `pve_hosts:` in `hosts.yml`. Then add a matching MAC-keyed entry in autopve's storage so the install side picks the right FQDN.
+
+The work itself lives in the `base` role (`ansible/roles/base/`). It's composed of independently-idempotent task files (currently only `netbox-register.yml`). Add new task files there and import them from `roles/base/tasks/main.yml` to grow the role.
+
