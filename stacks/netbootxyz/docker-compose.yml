@@ -9,7 +9,7 @@ services:
       - NET_RAW
     environment:
       - NGINX_PORT=8181
-      - TFTPD_OPTS=--log-dhcp --log-facility=- --dhcp-range=192.168.4.0,proxy --dhcp-userclass=set:ipxe,iPXE --dhcp-ignore=tag:ipxe --pxe-service=tag:!ipxe,x86PC,"Network Boot",netboot.xyz-undionly.kpxe,192.168.4.73 --pxe-service=tag:!ipxe,BC_EFI,"Network Boot",netboot.xyz-snponly.efi,192.168.4.73 --pxe-service=tag:!ipxe,X86-64_EFI,"Network Boot",netboot.xyz-snponly.efi,192.168.4.73 --pxe-service=tag:!ipxe,ARM64_EFI,"Network Boot",netboot.xyz-arm64-snponly.efi,192.168.4.73
+      - TFTPD_OPTS=--dhcp-range=192.168.4.0,proxy --dhcp-userclass=set:ipxe,iPXE --dhcp-ignore=tag:ipxe --pxe-service=tag:!ipxe,x86PC,"Network Boot",netboot.xyz-undionly.kpxe,192.168.4.73 --pxe-service=tag:!ipxe,BC_EFI,"Network Boot",netboot.xyz-snponly.efi,192.168.4.73 --pxe-service=tag:!ipxe,X86-64_EFI,"Network Boot",netboot.xyz-snponly.efi,192.168.4.73 --pxe-service=tag:!ipxe,ARM64_EFI,"Network Boot",netboot.xyz-arm64-snponly.efi,192.168.4.73
     volumes:
       - /home/leon/portainer/netboot/config:/config
       - /home/leon/portainer/netboot/assets:/assets
