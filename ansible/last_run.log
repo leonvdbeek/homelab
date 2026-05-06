@@ -365,3 +365,131 @@ core/2.18/reference_appendices/interpreter_discovery.html for more information.
 2026-05-05 22:12:45,521 p=69439 u=leonvandebeek n=ansible INFO| PLAY RECAP *********************************************************************
 2026-05-05 22:12:45,521 p=69439 u=leonvandebeek n=ansible INFO| lenovo-02                  : ok=17   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
 2026-05-05 22:12:45,521 p=69439 u=leonvandebeek n=ansible INFO| lenovo-03                  : ok=12   changed=1    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+2026-05-05 22:15:21,600 p=83441 u=leonvandebeek n=ansible INFO| PLAY [Apply base config to all Proxmox hosts] **********************************
+2026-05-05 22:15:21,605 p=83441 u=leonvandebeek n=ansible INFO| TASK [Gathering Facts] *********************************************************
+2026-05-05 22:15:23,167 p=83441 u=leonvandebeek n=ansible WARNING| [WARNING]: Platform linux on host lenovo-03 is using the discovered Python
+interpreter at /usr/bin/python3.13, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+
+2026-05-05 22:15:23,167 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,170 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Run lsblk for authoritative disk list] ****************************
+2026-05-05 22:15:23,684 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,689 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Build NetBox facts from gathered data] ****************************
+2026-05-05 22:15:23,719 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,722 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Build interface skip regex] ***************************************
+2026-05-05 22:15:23,737 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,740 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Build interface list (skip VM/bridge virtuals)] *******************
+2026-05-05 22:15:23,758 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,760 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Build disk list from lsblk JSON] **********************************
+2026-05-05 22:15:23,775 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-05 22:15:23,777 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : Show summary (per-host)] ******************************************
+2026-05-05 22:15:23,790 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03] => 
+  msg: '[lenovo-03] LENOVO ThinkCentre M910q | sn=S4DN2339 | 4C/1S | 7GB | mgmt=192.168.4.29 on vmbr0 | 2 ifaces, 1 disks'
+2026-05-05 22:15:23,793 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox manufacturer] **********************************************
+2026-05-05 22:15:24,404 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-05 22:15:24,407 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox device-type] ***********************************************
+2026-05-05 22:15:25,009 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-05 22:15:25,011 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox device record] *********************************************
+2026-05-05 22:15:26,446 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-05 22:15:26,449 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox interfaces] ************************************************
+2026-05-05 22:15:27,651 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-05 22:15:28,670 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-05 22:15:28,674 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox MACs on interfaces] ****************************************
+2026-05-05 22:15:29,725 p=83441 u=leonvandebeek n=ansible INFO| changed: [lenovo-03 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-05 22:15:30,852 p=83441 u=leonvandebeek n=ansible INFO| changed: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-05 22:15:30,856 p=83441 u=leonvandebeek n=ansible INFO| TASK [base : NetBox primary IP] ************************************************
+2026-05-05 22:15:31,827 p=83441 u=leonvandebeek n=ansible INFO| failed: [lenovo-03 -> localhost] (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}}) => changed=false 
+  ansible_loop_var: item
+  item:
+    active: true
+    ipv4:
+      address: 192.168.4.29
+      broadcast: 192.168.4.255
+      netmask: 255.255.255.0
+      network: 192.168.4.0
+      prefix: '24'
+    mac: 6c:4b:90:27:37:11
+    name: enp0s31f6
+    speed: 1000
+    type_facts: ether
+  msg: '{"address":["Duplicate IP address found in global table: 192.168.4.29/24"]}'
+2026-05-05 22:15:32,880 p=83441 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-05 22:15:32,882 p=83441 u=leonvandebeek n=ansible INFO| PLAY RECAP *********************************************************************
+2026-05-05 22:15:32,882 p=83441 u=leonvandebeek n=ansible INFO| lenovo-03                  : ok=12   changed=1    unreachable=0    failed=1    skipped=0    rescued=0    ignored=0   
+2026-05-06 07:48:59,507 p=71154 u=leonvandebeek n=ansible INFO| PLAY [Apply base config to all Proxmox hosts] **********************************
+2026-05-06 07:48:59,513 p=71154 u=leonvandebeek n=ansible INFO| TASK [Gathering Facts] *********************************************************
+2026-05-06 07:49:00,979 p=71154 u=leonvandebeek n=ansible WARNING| [WARNING]: Platform linux on host lenovo-02 is using the discovered Python
+interpreter at /usr/bin/python3.13, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+
+2026-05-06 07:49:00,979 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,025 p=71154 u=leonvandebeek n=ansible WARNING| [WARNING]: Platform linux on host lenovo-03 is using the discovered Python
+interpreter at /usr/bin/python3.13, but future installation of another Python
+interpreter could change the meaning of that path. See
+https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+
+2026-05-06 07:49:02,025 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,030 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Run lsblk for authoritative disk list] ****************************
+2026-05-06 07:49:02,530 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,533 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,538 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Build NetBox facts from gathered data] ****************************
+2026-05-06 07:49:02,564 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,565 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,567 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Build interface skip regex] ***************************************
+2026-05-06 07:49:02,580 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,584 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,587 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Build interface list (skip VM/bridge virtuals)] *******************
+2026-05-06 07:49:02,604 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,605 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,608 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Build disk list from lsblk JSON] **********************************
+2026-05-06 07:49:02,621 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02]
+2026-05-06 07:49:02,624 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03]
+2026-05-06 07:49:02,627 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Show summary (per-host)] ******************************************
+2026-05-06 07:49:02,641 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02] => 
+  msg: '[lenovo-02] LENOVO ThinkCentre M910q | sn=S4DN2430 | 4C/1S | 15GB | mgmt=192.168.4.76 on vmbr0 | 2 ifaces, 1 disks'
+2026-05-06 07:49:02,643 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03] => 
+  msg: '[lenovo-03] LENOVO ThinkCentre M910q | sn=S4DN2339 | 4C/1S | 7GB | mgmt=192.168.4.29 on vmbr0 | 2 ifaces, 1 disks'
+2026-05-06 07:49:02,646 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox manufacturer] **********************************************
+2026-05-06 07:49:03,277 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:03,302 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:03,304 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox device-type] ***********************************************
+2026-05-06 07:49:04,086 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:04,111 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:04,114 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox device record] *********************************************
+2026-05-06 07:49:05,234 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:05,236 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:05,239 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox interfaces] ************************************************
+2026-05-06 07:49:07,012 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:07,114 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {}})
+2026-05-06 07:49:08,137 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.76', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:08,370 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:08,376 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox MACs on interfaces] ****************************************
+2026-05-06 07:49:09,395 p=71154 u=leonvandebeek n=ansible INFO| changed: [lenovo-02 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {}})
+2026-05-06 07:49:09,442 p=71154 u=leonvandebeek n=ansible INFO| changed: [lenovo-03 -> localhost] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:10,300 p=71154 u=leonvandebeek n=ansible INFO| changed: [lenovo-02 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.76', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:10,375 p=71154 u=leonvandebeek n=ansible INFO| changed: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:10,380 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox primary IP] ************************************************
+2026-05-06 07:49:10,391 p=71154 u=leonvandebeek n=ansible INFO| skipping: [lenovo-02] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {}}) 
+2026-05-06 07:49:10,401 p=71154 u=leonvandebeek n=ansible INFO| skipping: [lenovo-03] => (item={'name': 'enp0s31f6', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'ether', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '192.168.4.255', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}}) 
+2026-05-06 07:49:11,451 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:2f:d5', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.76', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:11,758 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'vmbr0', 'mac': '6c:4b:90:27:37:11', 'type_facts': 'bridge', 'speed': 1000, 'active': True, 'ipv4': {'address': '192.168.4.29', 'broadcast': '', 'netmask': '255.255.255.0', 'network': '192.168.4.0', 'prefix': '24'}})
+2026-05-06 07:49:11,763 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Look up device id] ************************************************
+2026-05-06 07:49:12,519 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:12,625 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:12,628 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Look up primary IP id] ********************************************
+2026-05-06 07:49:13,066 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:13,070 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:13,073 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : Patch device.primary_ip4] *****************************************
+2026-05-06 07:49:13,751 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost]
+2026-05-06 07:49:13,752 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost]
+2026-05-06 07:49:13,755 p=71154 u=leonvandebeek n=ansible INFO| TASK [base : NetBox disks (inventory items)] ***********************************
+2026-05-06 07:49:14,725 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-03 -> localhost] => (item={'name': 'sda', 'size': 256060514304, 'vendor': 'ATA     ', 'model': 'SanDisk SD8TB8U256G1001', 'serial': '174062801900', 'type': 'disk'})
+2026-05-06 07:49:14,789 p=71154 u=leonvandebeek n=ansible INFO| ok: [lenovo-02 -> localhost] => (item={'name': 'sda', 'size': 256060514304, 'vendor': 'ATA     ', 'model': 'SanDisk SD8TB8U256G1001', 'serial': '174062804891', 'type': 'disk'})
+2026-05-06 07:49:14,795 p=71154 u=leonvandebeek n=ansible INFO| PLAY RECAP *********************************************************************
+2026-05-06 07:49:14,795 p=71154 u=leonvandebeek n=ansible INFO| lenovo-02                  : ok=17   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+2026-05-06 07:49:14,795 p=71154 u=leonvandebeek n=ansible INFO| lenovo-03                  : ok=17   changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
