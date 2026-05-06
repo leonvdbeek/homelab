@@ -155,6 +155,7 @@
     - item.ipv4 is defined
     - item.ipv4.address is defined
     - item.ipv4.address | length > 0
+    - item.name == nb_primary_iface   # only register IP on the mgmt iface, not its underlying NIC
 
 - name: Look up device id
   delegate_to: localhost
