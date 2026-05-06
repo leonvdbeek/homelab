@@ -4,6 +4,19 @@
 # Runs against the target host (gather_facts must be true) but every NetBox
 # call is delegated to localhost.
 
+- name: Verify NetBox env vars are set (sourced from .env)
+  delegate_to: localhost
+  run_once: true
+  ansible.builtin.assert:
+    that:
+      - netbox_url | length > 0
+      - netbox_token | length > 0
+    fail_msg: |-
+      NETBOX_URL or NETBOX_TOKEN is empty.
+      Did you `set -a; source ../.env; set +a` before running?
+      (or `cd ansible && set -a && source ../.env && set +a` if running from repo root)
+    success_msg: "NetBox URL: {{ netbox_url }}"
+
 - name: Run lsblk for authoritative disk list
   ansible.builtin.command: lsblk -dnbo NAME,SIZE,VENDOR,MODEL,SERIAL,TYPE -J
   register: nb_lsblk
