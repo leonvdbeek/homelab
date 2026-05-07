@@ -60,9 +60,17 @@ stacks/
 ipxe/           iPXE menu additions + autoexec.ipxe served by netboot.xyz
 ansible/        playbooks autopve runs on post-install webhook
 files/          first-boot scripts served by autopve at /files/<name>
+tofu/           OpenTofu — Talos VMs + Kubernetes cluster on top of Proxmox
+kubernetes/     in-cluster manifests (Helm values, Kustomize) Tofu and humans apply
 docs/           runbook-style notes
 .env.example    env vars consumed by playbooks (NETBOX_TOKEN etc.)
 ```
+
+The Proxmox-side automation (`stacks/`, `ipxe/`, `ansible/`) gets bare metal
+to "Proxmox node ready." The cluster layer (`tofu/`, `kubernetes/`) builds
+a Talos Kubernetes cluster on top of those nodes and wires up
+proxmox-csi-plugin so PVCs land on `ceph-pool`. See `tofu/README.md` for
+the cluster overview.
 
 ## One-time setup
 

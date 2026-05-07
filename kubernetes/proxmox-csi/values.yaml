@@ -1,0 +1,22 @@
+# Helm values for sergelogvinov/proxmox-csi-plugin.
+# The Proxmox API config (URL + token) is rendered into a Secret by tofu —
+# see ../../tofu/talos/csi.tf — and consumed here via existingConfigSecret.
+
+existingConfigSecret: proxmox-csi-plugin
+existingConfigSecretKey: config.yaml
+
+storageClass:
+  - name: proxmox-ceph-pool
+    storage: ceph-pool
+    reclaimPolicy: Delete
+    fstype: ext4
+    ssd: "true"
+
+# All Talos VMs are control-plane (compact 3-node cluster). Schedule the
+# controller on a CP node; the node DaemonSet runs on each automatically.
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    effect: NoSchedule

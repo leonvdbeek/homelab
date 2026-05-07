@@ -1,0 +1,5 @@
+# Override any of the defaults from variables.tf. Most homelabs won't need to.
+# proxmox_nodes  = ["lenovo-01", "lenovo-02", "lenovo-03"]
+# talos_version  = "v1.9.5"
+# disk_datastore = "ceph-pool"
+# network_bridge = "vmbr0"
