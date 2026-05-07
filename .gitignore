@@ -6,3 +6,10 @@
 stacks/**/storage-general.json
 stacks/**/docker-compose.override.yml
 ansible/playbooks/*/last_run.log
+
+# OpenTofu / Terraform — track .terraform.lock.hcl, ignore caches and state.
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example

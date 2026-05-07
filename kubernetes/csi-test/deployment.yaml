@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: csi-test
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: csi-test
+  template:
+    metadata:
+      labels:
+        app: csi-test
+    spec:
+      containers:
+        - name: writer
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - 'while true; do echo "$(date -Iseconds) hello from $(hostname)" >> /data/log.txt; sleep 5; done'
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: csi-test
