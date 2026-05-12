@@ -1,0 +1,88 @@
+---
+# Deploy the observability docker-compose stack to the docker host. Designed
+# to migrate the legacy portainer-managed `prometheus` and `grafana` stacks
+# in place: existing data volumes (grafana_grafana-storage + on-host
+# prometheus data dir) are reused, secret env-vars are bootstrapped from the
+# running grafana container the first time we deploy.
+
+- name: Ensure stack destination exists
+  ansible.builtin.file:
+    path: "{{ obs_stack_dest }}"
+    state: directory
+    mode: "0755"
+
+- name: Sync stack files to docker host
+  ansible.posix.synchronize:
+    src: "{{ obs_stack_src }}/"
+    dest: "{{ obs_stack_dest }}/"
+    delete: false
+    rsync_opts:
+      - "--exclude=.env"
+      - "--exclude=.env.example"
+  delegate_to: localhost
+  become: false
+
+- name: Probe for an existing .env on the host
+  ansible.builtin.stat:
+    path: "{{ obs_stack_dest }}/.env"
+  register: obs_env_stat
+
+# First-time bootstrap: capture the env from the live grafana container so
+# OAuth/SMTP secrets survive the migration. Skipped on subsequent runs.
+- name: Bootstrap .env from the running grafana container (first run only)
+  ansible.builtin.shell: |
+    set -e
+    docker inspect grafana --format '{{ "{{" }}range .Config.Env{{ "}}" }}{{ "{{" }}println .{{ "}}" }}{{ "{{" }}end{{ "}}" }}' \
+      | grep -E '^(GF_|TZ=)' \
+      > {{ obs_stack_dest }}/.env
+    chmod 0600 {{ obs_stack_dest }}/.env
+  args:
+    creates: "{{ obs_stack_dest }}/.env"
+  when: not obs_env_stat.stat.exists
+
+- name: Inspect existing containers' compose project label
+  ansible.builtin.command: >-
+    docker inspect --format '{{ "{{" }}index .Config.Labels "com.docker.compose.project"{{ "}}" }}' {{ item }}
+  loop: "{{ obs_old_containers }}"
+  register: legacy_inspect
+  changed_when: false
+  failed_when: false   # missing container -> rc=1, that's fine
+
+- name: Remove only legacy single-stack containers (skip if already part of observability)
+  ansible.builtin.command: docker rm -f {{ item.item }}
+  loop: "{{ legacy_inspect.results }}"
+  loop_control: { label: "{{ item.item }}" }
+  when:
+    - item.rc == 0
+    - item.stdout != obs_compose_project   # leave the new stack alone
+  register: legacy_rm
+  changed_when: legacy_rm.rc == 0
+
+- name: Bring up the new observability stack
+  ansible.builtin.command: >-
+    docker compose
+      -p {{ obs_compose_project }}
+      -f {{ obs_stack_dest }}/docker-compose.yml
+      up -d --remove-orphans
+  register: compose_up
+  changed_when: "'Started' in compose_up.stdout or 'Recreated' in compose_up.stdout or 'Created' in compose_up.stdout"
+
+- name: Wait for Prometheus
+  ansible.builtin.uri:
+    url: http://127.0.0.1:9090/-/ready
+    status_code: 200
+    timeout: 10
+  retries: 12
+  delay: 5
+  until: prom_ready.status == 200
+  register: prom_ready
+
+- name: Wait for Grafana
+  ansible.builtin.uri:
+    url: http://127.0.0.1:3100/api/health
+    status_code: 200
+    timeout: 10
+  retries: 12
+  delay: 5
+  until: graf_ready.status == 200
+  register: graf_ready

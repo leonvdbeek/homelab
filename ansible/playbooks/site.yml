@@ -3,4 +3,16 @@
   hosts: pve_hosts
   gather_facts: true
   roles:
-    - base
+    - role: base
+      tags: [base]
+    - role: proxmox-cert
+      tags: [cert]
+    - role: monitoring-node
+      tags: [monitoring]
+
+- name: Deploy observability stack on the docker host
+  hosts: cert_source
+  gather_facts: false
+  roles:
+    - role: observability-stack
+      tags: [observability]

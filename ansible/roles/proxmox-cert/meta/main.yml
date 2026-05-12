@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: proxmox-cert
+  description: Deploy Traefik's Let's Encrypt wildcard cert to pveproxy
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

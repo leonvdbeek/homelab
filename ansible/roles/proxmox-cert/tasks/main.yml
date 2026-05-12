@@ -1,0 +1,75 @@
+---
+# Pull Traefik's wildcard Let's Encrypt cert (DNS-01 / Cloudflare) from the
+# host running portainer/traefik and install it as the pveproxy certificate.
+# Idempotent: copy notifies a handler that only restarts pveproxy on change.
+
+- name: Slurp Traefik acme.json from cert source
+  delegate_to: "{{ proxmox_cert_source_host }}"
+  run_once: true
+  ansible.builtin.slurp:
+    src: "{{ proxmox_cert_source_acme_path }}"
+  register: acme_blob
+
+- name: Locate the wildcard cert entry inside acme.json
+  ansible.builtin.set_fact:
+    _cert_entry: >-
+      {{ ((acme_blob.content | b64decode | from_json)[proxmox_cert_resolver].Certificates
+          | selectattr('domain.main', 'equalto', proxmox_cert_domain)
+          | list | first) }}
+
+- name: Decode cert chain and private key
+  ansible.builtin.set_fact:
+    _cert_pem: "{{ _cert_entry.certificate | b64decode }}"
+    _cert_key: "{{ _cert_entry.key | b64decode }}"
+
+- name: Verify host FQDN is covered by the wildcard
+  vars:
+    _wild_suffix: "{{ proxmox_cert_domain | regex_replace('^\\*\\.', '') }}"
+    _fqdn: "{{ proxmox_cert_required_san }}"
+  ansible.builtin.assert:
+    that:
+      - _fqdn.endswith('.' ~ _wild_suffix)
+      - _fqdn.split('.') | length == (_wild_suffix.split('.') | length) + 1
+    fail_msg: >-
+      {{ _fqdn }} is not covered by wildcard {{ proxmox_cert_domain }}.
+      Either add a matching DNS record or pick a different cert.
+
+# pmxcfs (the FUSE-mounted /etc/pve) auto-enforces 0640 root:www-data and
+# rejects chmod, so ansible.builtin.copy can't write here directly. Stage the
+# files in /root and shell-copy them into place with `cat >` (no chmod).
+- name: Stage pveproxy cert chain in /root
+  ansible.builtin.copy:
+    content: "{{ _cert_pem }}"
+    dest: /root/.pveproxy-ssl.pem.staged
+    mode: "0640"
+
+- name: Stage pveproxy private key in /root
+  ansible.builtin.copy:
+    content: "{{ _cert_key }}"
+    dest: /root/.pveproxy-ssl.key.staged
+    mode: "0600"
+  no_log: true
+
+- name: Install pveproxy SSL cert chain
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      if ! cmp -s /root/.pveproxy-ssl.pem.staged {{ proxmox_cert_dest_pem }} 2>/dev/null; then
+        cat /root/.pveproxy-ssl.pem.staged > {{ proxmox_cert_dest_pem }}
+        echo CHANGED
+      fi
+  register: _install_pem
+  changed_when: "'CHANGED' in _install_pem.stdout"
+  notify: restart pveproxy
+
+- name: Install pveproxy SSL private key
+  ansible.builtin.shell:
+    cmd: |
+      set -e
+      if ! cmp -s /root/.pveproxy-ssl.key.staged {{ proxmox_cert_dest_key }} 2>/dev/null; then
+        cat /root/.pveproxy-ssl.key.staged > {{ proxmox_cert_dest_key }}
+        echo CHANGED
+      fi
+  register: _install_key
+  changed_when: "'CHANGED' in _install_key.stdout"
+  notify: restart pveproxy

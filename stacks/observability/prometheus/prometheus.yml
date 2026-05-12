@@ -1,0 +1,59 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  # ─── Self & Docker host ─────────────────────────────────────────────────
+  - job_name: prometheus
+    static_configs:
+      - targets: [prometheus:9090]
+
+  - job_name: traefik
+    static_configs:
+      - targets: [traefik:8080]
+
+  - job_name: cadvisor
+    static_configs:
+      - targets: [cadvisor:8080]
+
+  # Keep job name `node` — there's a week of history under this label and
+  # renaming would orphan it. Dashboards default their $job variable to
+  # `node` to match.
+  - job_name: node
+    static_configs:
+      - targets:
+          - 192.168.4.73:9100   # portainer host
+          - lenovo-01.local.leonvdbeek.com:9100
+          - lenovo-02.local.leonvdbeek.com:9100
+          - lenovo-03.local.leonvdbeek.com:9100
+
+  # ─── Proxmox VE — single pve-exporter, target= per-node fan-out ─────────
+  - job_name: pve
+    metrics_path: /pve
+    params:
+      module: [default]
+    static_configs:
+      - targets:
+          - lenovo-01
+          - lenovo-02
+          - lenovo-03
+    relabel_configs:
+      - source_labels: [__address__]
+        target_label: __param_target
+      - source_labels: [__param_target]
+        target_label: instance
+      - target_label: __address__
+        replacement: lenovo-01.local.leonvdbeek.com:9221   # the host running pve-exporter
+
+  # ─── Ceph mgr (active mgr answers, others 404; up{} signals which) ──────
+  - job_name: ceph
+    static_configs:
+      - targets:
+          - lenovo-01.local.leonvdbeek.com:9283
+          - lenovo-02.local.leonvdbeek.com:9283
+          - lenovo-03.local.leonvdbeek.com:9283
+    relabel_configs:
+      - source_labels: [__address__]
+        regex: '([^.]+)\..*'
+        target_label: instance
+        replacement: '$1'

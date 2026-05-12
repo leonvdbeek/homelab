@@ -1,0 +1,19 @@
+---
+# Where Traefik stores its ACME state. Must be readable by ansible_user on
+# that host (acme.json is mode 0600, owned by leon).
+proxmox_cert_source_host: portainer
+proxmox_cert_source_acme_path: /home/leon/portainer/traefik/data/acme.json
+
+# Top-level resolver key inside acme.json (set by certificatesResolvers in
+# traefik.yml — currently `cloudflare`).
+proxmox_cert_resolver: cloudflare
+
+# Which entry to pull. Match against domain.main of each Certificates[] item.
+proxmox_cert_domain: "*.local.leonvdbeek.com"
+
+# Each pve host's FQDN must match a SAN before we deploy. Fail fast if not.
+proxmox_cert_required_san: "{{ inventory_hostname }}.local.leonvdbeek.com"
+
+# pveproxy reads these. Path is per-node via the /etc/pve/local symlink.
+proxmox_cert_dest_pem: /etc/pve/local/pveproxy-ssl.pem
+proxmox_cert_dest_key: /etc/pve/local/pveproxy-ssl.key

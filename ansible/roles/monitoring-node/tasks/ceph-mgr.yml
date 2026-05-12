@@ -1,0 +1,33 @@
+---
+# Ceph's mgr `prometheus` module exposes cluster metrics on :9283. Enabling
+# the module is a cluster-wide operation, so run once on any host. The active
+# mgr is the only one that answers — Prometheus will scrape all three mons
+# and `up{}` will tell you which is currently active.
+
+- name: List enabled Ceph mgr modules
+  ansible.builtin.command: ceph mgr module ls --format json
+  register: ceph_mgr_modules
+  changed_when: false
+  run_once: true
+
+- name: Enable Ceph mgr prometheus module
+  ansible.builtin.command: ceph mgr module enable prometheus
+  when: "'prometheus' not in (ceph_mgr_modules.stdout | from_json).enabled_modules"
+  run_once: true
+
+- name: Find the active mgr
+  ansible.builtin.command: ceph mgr stat --format json
+  register: ceph_mgr_stat
+  changed_when: false
+  run_once: true
+
+- name: Probe prometheus port on the active mgr
+  ansible.builtin.uri:
+    url: "http://{{ (ceph_mgr_stat.stdout | from_json).active_name }}:9283/metrics"
+    status_code: 200
+    timeout: 15
+  register: ceph_prom_probe
+  retries: 6
+  delay: 5
+  until: ceph_prom_probe.status == 200
+  run_once: true

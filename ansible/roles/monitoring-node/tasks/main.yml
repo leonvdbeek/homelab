@@ -1,0 +1,13 @@
+---
+- name: Install node_exporter on every PVE host
+  ansible.builtin.import_tasks: node-exporter.yml
+  tags: [monitoring, node-exporter]
+
+- name: Install pve-exporter on the designated host only
+  ansible.builtin.import_tasks: pve-exporter.yml
+  when: inventory_hostname == pve_exporter_host
+  tags: [monitoring, pve-exporter]
+
+- name: Enable Ceph mgr Prometheus module
+  ansible.builtin.import_tasks: ceph-mgr.yml
+  tags: [monitoring, ceph]

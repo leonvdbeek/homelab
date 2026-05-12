@@ -1,0 +1,10 @@
+---
+obs_stack_src: "{{ playbook_dir }}/../../stacks/observability"
+obs_stack_dest: /home/leon/portainer/observability
+
+# Old portainer-managed stacks we are replacing
+obs_old_containers:
+  - prometheus
+  - grafana
+
+obs_compose_project: observability
