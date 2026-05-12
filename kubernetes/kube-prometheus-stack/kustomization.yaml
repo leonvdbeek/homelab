@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: monitoring
+
+resources:
+  - namespace.yaml
+
+# Inflate the upstream helm chart with our values, then kustomize patches it
+# (currently nothing — kept for symmetry with kubernetes/csi-test). Render
+# with `kustomize build --enable-helm` and apply server-side.
+helmCharts:
+  - name: kube-prometheus-stack
+    repo: https://prometheus-community.github.io/helm-charts
+    version: "84.5.0"
+    releaseName: kube-prometheus-stack
+    namespace: monitoring
+    valuesFile: values.yaml
+    includeCRDs: true

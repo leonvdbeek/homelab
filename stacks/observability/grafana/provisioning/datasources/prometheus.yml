@@ -1,0 +1,30 @@
+apiVersion: 1
+
+# Drop any pre-provisioning Prometheus DS so we can re-create with a stable
+# UID. Safe to leave in place — Grafana ignores names that don't exist.
+deleteDatasources:
+  - name: Prometheus
+    orgId: 1
+
+datasources:
+  - name: Prometheus
+    uid: prometheus            # stable UID so checked-in dashboards keep working
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      timeInterval: "15s"
+
+  # In-cluster Prometheus (kube-prometheus-stack) — reachable via the
+  # NodePort exposed by the Talos service on every control-plane node.
+  - name: Prometheus-K8s
+    uid: prometheus-k8s
+    type: prometheus
+    access: proxy
+    url: http://192.168.4.61:30090
+    isDefault: false
+    editable: false
+    jsonData:
+      timeInterval: "30s"

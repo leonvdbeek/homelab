@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  role_name: monitoring-node
+  description: node_exporter + pve-exporter on each Proxmox host
+  license: MIT
+  min_ansible_version: "2.14"
+dependencies: []

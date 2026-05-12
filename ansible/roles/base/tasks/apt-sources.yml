@@ -1,0 +1,22 @@
+---
+# PVE installer ships with the paid enterprise repo enabled and (since PVE 9)
+# also creates two byte-identical Ceph source files. Both make `apt-get update`
+# fail loudly. Fix both idempotently so apt-cache stays usable.
+
+- name: Disable the (paid) PVE enterprise apt repo
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/pve-enterprise.sources
+    state: absent
+  register: pve_ent
+
+- name: Remove the duplicate ceph-squid sources file
+  ansible.builtin.file:
+    path: /etc/apt/sources.list.d/ceph-no-subscription.sources
+    state: absent
+  register: ceph_dup
+  when: ansible_facts['os_family'] == 'Debian'
+
+- name: Refresh apt cache after sources cleanup
+  ansible.builtin.apt:
+    update_cache: true
+  when: pve_ent.changed or ceph_dup.changed
