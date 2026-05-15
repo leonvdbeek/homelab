@@ -17,13 +17,16 @@ datasources:
     jsonData:
       timeInterval: "15s"
 
-  # In-cluster Prometheus (kube-prometheus-stack) — reachable via the
-  # NodePort exposed by the Talos service on every control-plane node.
+  # In-cluster Prometheus (kube-prometheus-stack) — reachable on a Cilium
+  # LB IP pinned to 192.168.4.241 in the prom service. Cilium re-ARPs the
+  # IP onto a surviving node within seconds when one CP node goes down,
+  # so this datasource is HA. (Talos's cluster_vip is kube-API-only, so
+  # NodePort traffic on 30090 via the VIP gets RST'd — only port 6443.)
   - name: Prometheus-K8s
     uid: prometheus-k8s
     type: prometheus
     access: proxy
-    url: http://192.168.4.61:30090
+    url: http://192.168.4.241:9090
     isDefault: false
     editable: false
     jsonData:
