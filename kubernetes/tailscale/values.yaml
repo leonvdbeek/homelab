@@ -1,0 +1,26 @@
+# Tailscale Kubernetes operator values.
+# Reference: https://tailscale.com/kb/1236/kubernetes-operator
+#
+# We deliberately leave `oauth.clientId` / `oauth.clientSecret` unset so
+# the chart's secret/oauth.yaml template short-circuits — we ship the
+# `operator-oauth` Secret ourselves, sops-encrypted in `secret.enc.yaml`,
+# to keep credentials out of plaintext values.
+oauth:
+  clientId: ""
+  clientSecret: ""
+
+operatorConfig:
+  hostname: k8s-operator
+  defaultTags:
+    - "tag:k8s-operator"
+
+# The operator can publish a Kubernetes API server proxy onto the tailnet
+# (handy for kubectl access). We don't need it for the subnet-router use
+# case, so it stays off.
+apiServerProxyConfig:
+  mode: "false"
+
+# Make Connector-spawned subnet-router pods land on control-plane nodes
+# (we have no workers; CP is co-tenant).
+proxyConfig:
+  defaultTags: "tag:k8s"

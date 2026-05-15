@@ -8,9 +8,12 @@ spec:
   parentRefs:
     - name: lan
       namespace: gateway
-      sectionName: https
+      # The portainer/Traefik stack still owns authentik.leonvdbeek.com,
+      # so the cluster's authentik lives one level deeper on the
+      # lenovium.* subdomain to avoid collisions.
+      sectionName: https-lenovium
   hostnames:
-    - authentik.leonvdbeek.com
+    - authentik.lenovium.leonvdbeek.com
   rules:
     - backendRefs:
         - name: authentik-server
