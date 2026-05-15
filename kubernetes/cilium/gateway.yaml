@@ -42,6 +42,21 @@ spec:
       allowedRoutes:
         namespaces:
           from: All
+    # Separate listener for the lenovium subdomain. Gateway API listeners
+    # only match a single label per wildcard (RFC 4592), so *.leonvdbeek.com
+    # won't accept authentik.lenovium.leonvdbeek.com — needs its own one.
+    - name: https-lenovium
+      protocol: HTTPS
+      port: 443
+      hostname: "*.lenovium.leonvdbeek.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-lenovium-leonvdbeek-com-tls
+      allowedRoutes:
+        namespaces:
+          from: All
 ---
 # Global :80 → :443 redirect for everything *.leonvdbeek.com.
 apiVersion: gateway.networking.k8s.io/v1

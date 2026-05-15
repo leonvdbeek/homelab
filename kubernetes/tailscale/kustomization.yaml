@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: tailscale
+
+resources:
+  - namespace.yaml
+  - connectors.yaml
+  # secret.enc.yaml (operator OAuth client_id + client_secret) is
+  # sops-encrypted; apply it out-of-band before this kustomization:
+  #   sops -d secret.enc.yaml | kubectl apply -f -
+
+helmCharts:
+  - name: tailscale-operator
+    repo: https://pkgs.tailscale.com/helmcharts
+    version: "1.78.1"
+    releaseName: tailscale-operator
+    namespace: tailscale
+    valuesFile: values.yaml
+    includeCRDs: true

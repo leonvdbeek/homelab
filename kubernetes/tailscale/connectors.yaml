@@ -1,0 +1,33 @@
+---
+# HA pair of subnet routers — each advertises the same Cilium LB pool, so
+# losing one node doesn't take tailnet access to *.lenovium.leonvdbeek.com
+# (or anything else served by the Gateway) down. Tailscale prefers the
+# fastest healthy peer, so failover is transparent.
+#
+# Scope: 192.168.4.240/28 covers 192.168.4.240-255 — the LB pool defined
+# in kubernetes/cilium/lb-pool.yaml is .240-.250, so this is exactly the
+# range we want exposed and nothing else. The rest of the LAN stays
+# private from the tailnet.
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: lb-pool-a
+spec:
+  hostname: k8s-lb-pool-a
+  tags:
+    - "tag:k8s"
+  subnetRouter:
+    advertiseRoutes:
+      - "192.168.4.240/28"
+---
+apiVersion: tailscale.com/v1alpha1
+kind: Connector
+metadata:
+  name: lb-pool-b
+spec:
+  hostname: k8s-lb-pool-b
+  tags:
+    - "tag:k8s"
+  subnetRouter:
+    advertiseRoutes:
+      - "192.168.4.240/28"

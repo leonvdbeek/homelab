@@ -18,3 +18,27 @@ spec:
     name: letsencrypt
     kind: ClusterIssuer
     group: cert-manager.io
+---
+# Second wildcard for the lenovium subdomain. Cloudflare's wildcard A
+# record (`*.leonvdbeek.com` → Gateway IP) matches arbitrary depths so
+# *.lenovium.leonvdbeek.com names already resolve, but Gateway API and
+# TLS both follow RFC wildcards (single label) — so the cluster-side
+# Gateway listener and cert need their own wildcard at that depth.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-lenovium-leonvdbeek-com
+  namespace: gateway
+spec:
+  secretName: wildcard-lenovium-leonvdbeek-com-tls
+  duration: 2160h
+  renewBefore: 720h
+  # Only the wildcard — we never serve the apex `lenovium.leonvdbeek.com`
+  # directly, and including it doubles the ACME work + risks our CF token
+  # cleanup hitting the 7003 quirk on the second authz.
+  dnsNames:
+    - "*.lenovium.leonvdbeek.com"
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+    group: cert-manager.io
