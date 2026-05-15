@@ -1,0 +1,79 @@
+# Cilium CNI values, tuned for our 3-node Talos cluster.
+# Reference: https://docs.cilium.io/en/stable/installation/k8s-install-helm/
+#
+# Talos-specific guidance:
+#   https://www.talos.dev/v1.10/kubernetes-guides/network/deploying-cilium/
+#
+# This file is the source of truth for chart values. Tofu reads it via
+# file() and applies it as part of `tofu apply` — see ../../tofu/talos/cilium.tf.
+
+# Drop kube-proxy entirely; Cilium replaces it. Requires the matching
+# Talos patch in tofu (cluster.proxy.disabled = true).
+kubeProxyReplacement: true
+
+# Talos exposes the API server on each control-plane node IP. Cilium needs
+# this so it can reach kube-apiserver before the cluster network is up.
+# Use the in-cluster kubernetes service VIP via the local-API-server LB.
+k8sServiceHost: localhost
+k8sServicePort: 7445
+
+# Required on Talos — control-plane nodes are co-tenant with workloads.
+securityContext:
+  capabilities:
+    ciliumAgent:
+      - CHOWN
+      - KILL
+      - NET_ADMIN
+      - NET_RAW
+      - IPC_LOCK
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - DAC_OVERRIDE
+      - FOWNER
+      - SETGID
+      - SETUID
+    cleanCiliumState:
+      - NET_ADMIN
+      - SYS_ADMIN
+      - SYS_RESOURCE
+
+cgroup:
+  autoMount:
+    enabled: false
+  hostRoot: /sys/fs/cgroup
+
+# Gateway API support (Cilium's built-in implementation).
+gatewayAPI:
+  enabled: true
+  enableAlpn: true
+  enableAppProtocol: true
+
+# Cilium's own LoadBalancer IPAM + L2 announcements — replaces MetalLB.
+# Pool is defined in lb-pool.yaml. L2 announcements let Cilium ARP-respond
+# on the LAN for assigned LB IPs.
+l2announcements:
+  enabled: true
+
+# k8s client rate limit must be bumped when l2announcements is on
+# (Cilium polls leases frequently).
+k8sClientRateLimit:
+  qps: 50
+  burst: 100
+
+# Run agents and operator in cluster-scoped mode.
+ipam:
+  mode: kubernetes
+
+# Hubble: keep observability on, no UI for now (use Grafana for metrics).
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: false
+
+operator:
+  replicas: 2
+  rollOutPods: true
+
+rollOutCiliumPods: true

@@ -48,12 +48,16 @@ kubeScheduler:
     https: true
     insecureSkipVerify: true
 
-# Prometheus exposed on every node port 30090 so the central Prom (and the
-# central Grafana) can reach it directly without an ingress controller.
+# Prometheus exposed on a fixed LB IP from Cilium's pool (lb-pool.yaml:
+# 192.168.4.240-250). The central Grafana on portainer hits this IP and
+# stays connected through any single-node failure — Cilium re-ARPs the
+# IP onto a surviving node. Note: Talos's `cluster_vip` is for the kube
+# API only (port 6443); other ports get RST'd. The LB pool is what gives
+# us a real HA endpoint for arbitrary service ports.
 prometheus:
   service:
-    type: NodePort
-    nodePort: 30090
+    type: LoadBalancer
+    loadBalancerIP: 192.168.4.241
   prometheusSpec:
     retention: 7d
     # No PV — emptyDir keeps things simple. 7d retention fits in pod memory/disk.

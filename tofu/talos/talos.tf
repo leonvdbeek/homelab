@@ -10,14 +10,21 @@ locals {
     ][0]
   }
 
-  # Use the first control-plane node as the cluster API endpoint and the
-  # bootstrap target. Swap in a VIP later if you want HA on the API.
+  # First node is the talosctl/bootstrap target (the Talos API has no VIP —
+  # only kube-apiserver does). The kube-API endpoint baked into kubeconfig
+  # is the VIP so clients survive any single control-plane node going down.
   first_cp_ip = local.vm_ips[keys(local.vm_ips)[0]]
 
   # Major.minor of the Talos release we're running. The provider's data
   # sources default to the newest schema they know, which emits keys older
   # Talos rejects (e.g. grubUseUKICmdline). Pinning matches the running ISO.
   talos_minor_version = "v${regex("^v?(\\d+\\.\\d+)", var.talos_version)[0]}"
+
+  # Factory installer image matching the ISO schematic. Without this Talos
+  # would pull the upstream installer at `talosctl upgrade` time, dropping
+  # the extensions (so qemu-guest-agent never lands on the installed system,
+  # only inside the ISO's maintenance mode).
+  talos_installer_image = "factory.talos.dev/installer/${local.talos_schematic_id}:${var.talos_version}"
 }
 
 resource "talos_machine_secrets" "this" {
@@ -26,7 +33,7 @@ resource "talos_machine_secrets" "this" {
 
 data "talos_machine_configuration" "cp" {
   cluster_name     = var.cluster_name
-  cluster_endpoint = "https://${local.first_cp_ip}:6443"
+  cluster_endpoint = "https://${var.cluster_vip}:6443"
   machine_type     = "controlplane"
   machine_secrets  = talos_machine_secrets.this.machine_secrets
   talos_version    = local.talos_minor_version
@@ -35,12 +42,33 @@ data "talos_machine_configuration" "cp" {
     yamlencode({
       machine = {
         install = {
-          disk = var.install_disk
+          disk  = var.install_disk
+          image = local.talos_installer_image
         }
       }
       cluster = {
         # Compact 3-node cluster: control-plane nodes also run workloads.
         allowSchedulingOnControlPlanes = true
+        # kube-apiserver serving cert needs to cover the VIP and every CP
+        # node IP, otherwise clients hitting the VIP get a cert mismatch.
+        apiServer = {
+          certSANs = concat([var.cluster_vip], values(local.vm_ips))
+        }
+        # Hand pod networking over to Cilium. Talos stops managing
+        # the bundled Flannel DaemonSet — delete it manually once
+        # (`kubectl -n kube-system delete ds kube-flannel`). Cilium
+        # is installed by helm_release in cilium.tf.
+        network = {
+          cni = {
+            name = "none"
+          }
+        }
+        # Cilium runs kube-proxy-replacement mode. Same caveat: delete
+        # the existing kube-proxy DaemonSet after apply
+        # (`kubectl -n kube-system delete ds kube-proxy`).
+        proxy = {
+          disabled = true
+        }
       }
     })
   ]
@@ -57,11 +85,22 @@ resource "talos_machine_configuration_apply" "cp" {
   # Proxmox node a PVC's underlying disk should be allocated on. Hostname is
   # also pinned to the Proxmox VM name so the CSI plugin's "look up VM by node
   # name" fallback resolves correctly (we don't run a Proxmox CCM yet).
+  # The interfaces block declares the VIP on every CP node; Talos elects one
+  # holder at a time and re-ARPs on failover.
   config_patches = [
     yamlencode({
       machine = {
         network = {
           hostname = each.key
+          interfaces = [
+            {
+              interface = var.vm_network_interface
+              dhcp      = true
+              vip = {
+                ip = var.cluster_vip
+              }
+            },
+          ]
         }
         nodeLabels = {
           "topology.kubernetes.io/region" = var.cluster_name

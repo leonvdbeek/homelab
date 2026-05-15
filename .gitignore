@@ -5,6 +5,11 @@
 # Keep .example files; ignore the real ones
 stacks/**/storage-general.json
 stacks/**/docker-compose.override.yml
+
+# Plain (unencrypted) cluster secrets. Only the sops-encrypted
+# kubernetes/**/*.enc.yaml versions belong in git.
+kubernetes/**/secret.yaml
+kubernetes/**/secrets.yaml
 ansible/playbooks/*/last_run.log
 
 # OpenTofu / Terraform — track .terraform.lock.hcl, ignore caches and state.

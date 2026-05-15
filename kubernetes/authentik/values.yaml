@@ -1,0 +1,91 @@
+# Authentik helm chart values.
+# Reference: https://github.com/goauthentik/helm/tree/main/charts/authentik
+#
+# Strategy:
+#   - The chart's `authentik.*` keys turn into env vars (AUTHENTIK_*).
+#     We set the *non-secret* connection params here (postgres host/port,
+#     db name, user) so they survive a Secret deletion.
+#   - Empty-string `password` and `secret_key` mean the chart emits no
+#     env var for them, so our `global.envFrom` (the ESO-managed
+#     authentik-secrets Secret) wins and supplies the real values.
+#   - Per-app OIDC client secrets and the bootstrap admin password are
+#     in the same Secret; blueprints read them with `!Env`.
+
+global:
+  envFrom:
+    - secretRef:
+        name: authentik-secrets
+
+  additionalLabels:
+    app: authentik
+
+authentik:
+  log_level: info
+
+  # Filled by envFrom: AUTHENTIK_SECRET_KEY
+  secret_key: ""
+
+  postgresql:
+    # Connection params — non-sensitive, fine to commit.
+    host: pg-rw.postgres.svc.cluster.local
+    port: 5432
+    name: authentik
+    user: authentik
+    # Password comes from envFrom: AUTHENTIK_POSTGRESQL__PASSWORD
+    password: ""
+
+  redis:
+    # The bundled redis subchart sets up a Service named
+    # `<release>-redis-master`.
+    host: "{{ .Release.Name }}-redis-master"
+    password: ""
+
+# Top-level blueprints block — the chart watches these ConfigMaps and
+# mounts every .yaml key into /blueprints/local/ inside server + worker.
+blueprints:
+  configMaps:
+    - authentik-blueprints
+
+server:
+  replicas: 2
+  service:
+    type: ClusterIP
+  resources:
+    requests: { cpu: 200m, memory: 512Mi }
+    limits:   { memory: 1Gi }
+
+worker:
+  replicas: 2
+  resources:
+    requests: { cpu: 100m, memory: 384Mi }
+    limits:   { memory: 768Mi }
+
+# Use the chart's bundled Redis (tiny, no PV — durable state is in
+# Postgres). Not HA, but Authentik's Redis use is cache + websocket
+# relay — losing it just signs people out.
+#
+# Bitnami restricted public access to their Docker Hub images in 2025;
+# their charts now point at tags that 401 from docker.io/bitnami. Pin
+# to the bitnamilegacy archive repo until either Bitnami unblocks or we
+# swap to a different chart.
+redis:
+  enabled: true
+  architecture: standalone
+  auth:
+    enabled: false
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/redis
+  master:
+    persistence:
+      enabled: false
+  # Bitnami's chart NP enforces ingress restrictions that Cilium 1.16+
+  # treats more strictly than expected (authentik-server gets EPERM even
+  # though port 6379 is allowed). Single-namespace homelab — no
+  # multi-tenancy risk in trusting same-ns peers.
+  networkPolicy:
+    enabled: false
+
+# Shared CNPG, not the chart's bundled subchart.
+postgresql:
+  enabled: false

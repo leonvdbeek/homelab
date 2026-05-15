@@ -1,0 +1,24 @@
+---
+# Each app gets its own logical database + owner role inside the shared
+# cluster. CNPG's Database CR (operator >= 1.24) creates these declaratively.
+# The Secret holding the owner's password lives sops-encrypted in the
+# corresponding app's directory (e.g. ../authentik/secret.enc.yaml).
+
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: authentik
+  namespace: postgres
+spec:
+  cluster:
+    name: pg
+  name: authentik
+  owner: authentik
+  encoding: UTF8
+  localeCollate: en_US.utf8
+  localeCType: en_US.utf8
+  # `delete` is the default; switch to `retain` if you ever want delete-
+  # protection on the CR (so removing the CR doesn't drop the DB).
+  databaseReclaimPolicy: retain
+  # ensure: present | absent — present creates if missing, absent drops.
+  ensure: present

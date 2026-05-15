@@ -1,0 +1,32 @@
+# cert-manager values.
+# Reference: https://artifacthub.io/packages/helm/cert-manager/cert-manager
+
+crds:
+  enabled: true
+  keep: true
+
+# Tell cert-manager about the Gateway API CRDs so it can serve
+# Certificate resources referenced by Gateway listeners.
+config:
+  apiVersion: controller.config.cert-manager.io/v1alpha1
+  kind: ControllerConfiguration
+  enableGatewayAPI: true
+
+prometheus:
+  enabled: true
+  servicemonitor:
+    enabled: true
+
+resources:
+  requests: { cpu: 50m, memory: 96Mi }
+  limits:   { memory: 256Mi }
+
+webhook:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits:   { memory: 128Mi }
+
+cainjector:
+  resources:
+    requests: { cpu: 50m, memory: 96Mi }
+    limits:   { memory: 256Mi }
