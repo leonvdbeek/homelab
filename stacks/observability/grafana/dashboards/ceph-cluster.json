@@ -192,7 +192,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_w_in_bytes{}[5m]))",
+          "expr": "sum(irate(ceph_pool_wr_bytes{}[5m]))",
           "format": "time_series",
           "instant": true,
           "interval": "$interval",
@@ -270,7 +270,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_r_out_bytes{}[5m]))",
+          "expr": "sum(irate(ceph_pool_rd_bytes{}[5m]))",
           "format": "time_series",
           "instant": true,
           "interval": "$interval",
@@ -576,7 +576,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(ceph_osd_op_w_in_bytes{})",
+          "expr": "sum(ceph_pool_wr_bytes{})",
           "format": "time_series",
           "instant": false,
           "interval": "$interval",
@@ -650,7 +650,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(ceph_osd_op_r_out_bytes{})",
+          "expr": "sum(ceph_pool_rd_bytes{})",
           "format": "time_series",
           "instant": false,
           "interval": "$interval",
@@ -787,7 +787,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_w{}[5m]))",
+          "expr": "sum(irate(ceph_pool_wr{}[5m]))",
           "format": "time_series",
           "instant": true,
           "interval": "$interval",
@@ -865,7 +865,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_r{}[5m]))",
+          "expr": "sum(irate(ceph_pool_rd{}[5m]))",
           "format": "time_series",
           "instant": true,
           "interval": "$interval",
@@ -1096,7 +1096,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(ceph_mon_num_sessions{})",
+          "expr": "sum(ceph_mon_quorum_status)",
           "format": "time_series",
           "instant": false,
           "interval": "$interval",
@@ -1105,7 +1105,7 @@
           "refId": "A"
         }
       ],
-      "title": "Mon Session Num",
+      "title": "Mons in Quorum",
       "transparent": false,
       "type": "stat"
     },
@@ -2332,7 +2332,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_w{}[5m]))",
+          "expr": "sum(irate(ceph_pool_wr{}[5m]))",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -2342,7 +2342,7 @@
         },
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_r{}[5m]))",
+          "expr": "sum(irate(ceph_pool_rd{}[5m]))",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -2436,7 +2436,7 @@
       "targets": [
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_w_in_bytes{}[5m]))",
+          "expr": "sum(irate(ceph_pool_wr_bytes{}[5m]))",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
@@ -2446,7 +2446,7 @@
         },
         {
           "datasource": "prometheus",
-          "expr": "sum(irate(ceph_osd_op_r_out_bytes{}[5m]))",
+          "expr": "sum(irate(ceph_pool_rd_bytes{}[5m]))",
           "format": "time_series",
           "interval": "$interval",
           "intervalFactor": 1,
