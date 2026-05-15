@@ -1,0 +1,22 @@
+---
+# Wildcard HTTPRoute — anything `*.lenovium.leonvdbeek.com` that isn't
+# claimed by a more-specific route (the authentik one in
+# kubernetes/authentik/) lands here. Cluster Gateway terminates TLS with
+# the lenovium wildcard cert; nginx in the backend strips the `.lenovium`
+# from Host and proxies to portainer/Traefik.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portainer-proxy
+  namespace: portainer-proxy
+spec:
+  parentRefs:
+    - name: lan
+      namespace: gateway
+      sectionName: https-lenovium
+  hostnames:
+    - "*.lenovium.leonvdbeek.com"
+  rules:
+    - backendRefs:
+        - name: portainer-proxy
+          port: 80
