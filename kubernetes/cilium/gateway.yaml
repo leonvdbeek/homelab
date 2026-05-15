@@ -1,0 +1,63 @@
+---
+# Namespace for the shared Gateway resource. HTTPRoutes from app namespaces
+# attach to this Gateway by referencing parentRefs.namespace=gateway.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gateway
+---
+# The one Gateway. Listens on :80 (redirect to :443 via an HTTPRoute below)
+# and :443 with the wildcard cert from cert-manager.
+#
+# The Gateway's address comes from Cilium LB IPAM; ExternalDNS reads the
+# Gateway and writes the *.leonvdbeek.com A record at Cloudflare.
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: lan
+  namespace: gateway
+  annotations:
+    # Hint to ExternalDNS — only sync this hostname for the Gateway address.
+    external-dns.alpha.kubernetes.io/hostname: "wild.leonvdbeek.com"
+spec:
+  gatewayClassName: cilium
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    - name: https
+      protocol: HTTPS
+      port: 443
+      hostname: "*.leonvdbeek.com"
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: wildcard-leonvdbeek-com-tls
+            # cert-manager writes the cert into the gateway namespace via
+            # the Certificate resource in cert-manager/wildcard-cert.yaml.
+      allowedRoutes:
+        namespaces:
+          from: All
+---
+# Global :80 → :443 redirect for everything *.leonvdbeek.com.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: https-redirect
+  namespace: gateway
+spec:
+  parentRefs:
+    - name: lan
+      sectionName: http
+  hostnames:
+    - "*.leonvdbeek.com"
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

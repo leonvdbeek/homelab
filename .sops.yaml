@@ -1,0 +1,12 @@
+# sops encryption rules.
+#
+# Every file under kubernetes/**/*.enc.yaml is encrypted/decrypted with
+# the age recipient(s) below. The matching private key lives at
+# `~/.config/sops/age/keys.txt` (not in this repo). To add another
+# operator, generate their age key, add their public key to the
+# recipients list, and run `sops updatekeys <file>` on each .enc.yaml.
+creation_rules:
+  - path_regex: kubernetes/.*\.enc\.yaml$
+    encrypted_regex: "^(data|stringData)$"
+    age: >-
+      age1y93vgmxvlrvv4kw5q32qqcf7tftqkrm2qzmcg00zka080nsazdjqn7k5m8

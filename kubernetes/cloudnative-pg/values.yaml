@@ -1,0 +1,10 @@
+# CloudNativePG operator values.
+# Reference: https://github.com/cloudnative-pg/charts/tree/main/charts/cloudnative-pg
+#
+# Tiny operator, no special tuning needed. Default monitoring on so the
+# in-cluster kube-prometheus-stack auto-scrapes the operator metrics.
+monitoring:
+  podMonitorEnabled: true
+  grafanaDashboard:
+    create: true
+    namespace: monitoring

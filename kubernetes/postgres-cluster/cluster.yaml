@@ -1,0 +1,76 @@
+---
+# Shared HA Postgres cluster — 3 instances, one per Talos node, backed by
+# proxmox-ceph-pool. Apps create logical databases inside this cluster via
+# Database CRs (see databases.yaml). Per-database credentials live in
+# Vaultwarden and are pulled by ESO.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: pg
+  namespace: postgres
+spec:
+  instances: 3
+  # Run a sane Postgres major. Bump explicitly — never auto.
+  imageName: ghcr.io/cloudnative-pg/postgresql:16.6-22
+
+  storage:
+    storageClass: proxmox-ceph-pool
+    size: 20Gi
+
+  # Keep WAL on the same volume — Ceph handles durability, no need for a
+  # separate WAL device on a homelab cluster.
+
+  postgresql:
+    parameters:
+      max_connections: "200"
+      shared_buffers: "512MB"
+      effective_cache_size: "1536MB"
+      work_mem: "8MB"
+      maintenance_work_mem: "128MB"
+      # Tune for SSD-backed Ceph.
+      random_page_cost: "1.1"
+      effective_io_concurrency: "200"
+      # Crash safety; with Ceph replication 3x we don't need synchronous
+      # commit at the Postgres level for homelab data.
+      synchronous_commit: "on"
+
+  # 3 instances → quorum, with failover handled by the operator. The
+  # operator keeps a primary + N replicas and elects a new primary on
+  # pod loss.
+  primaryUpdateStrategy: unsupervised
+
+  # Per-app roles. The operator creates the role on first reconcile and
+  # keeps the password in sync with the referenced Secret. The Database
+  # CR in databases.yaml then owns its database with this role.
+  # Secrets (basic-auth shape: username + password) live next to this
+  # file as sops-encrypted *.enc.yaml. Bootstrap order:
+  #   sops -d secret.enc.yaml | kubectl apply -f -
+  #   kubectl apply -k .
+  managed:
+    roles:
+      - name: authentik
+        login: true
+        ensure: present
+        passwordSecret:
+          name: authentik-db
+
+  monitoring:
+    enablePodMonitor: true
+
+  # Bootstrap an empty cluster the first time, then we add databases via
+  # Database CRs (see databases.yaml). No initial database/owner here so
+  # we don't have to retro-fit the default `app` DB later.
+  bootstrap:
+    initdb:
+      database: postgres
+      owner: postgres
+      encoding: UTF8
+      localeCollate: en_US.utf8
+      localeCType: en_US.utf8
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      memory: 2Gi

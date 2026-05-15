@@ -1,0 +1,43 @@
+# external-dns values.
+# Reference: https://artifacthub.io/packages/helm/external-dns/external-dns
+
+provider:
+  name: cloudflare
+
+# Match only the zones we manage. Trying to enumerate other zones the
+# token can't see produces noisy logs.
+domainFilters:
+  - leonvdbeek.com
+
+# Sources to watch — Gateway routes + Services for everything else
+# (e.g., a LoadBalancer Service that's not behind the gateway).
+sources:
+  - gateway-httproute
+  - gateway-grpcroute
+  - service
+
+# TXT registry — store ownership metadata for records so external-dns
+# only touches records it created. The owner prefix differentiates this
+# cluster from any future second cluster.
+policy: sync
+txtOwnerId: homelab
+txtPrefix: "edns-"
+
+env:
+  - name: CF_API_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: cloudflare-api-token
+        key: api-token
+
+# Cloudflare proxy mode defaults to OFF (the `--cloudflare-proxied` flag
+# is a kingpin bool — present means true, absent means false). Leaving it
+# off is what we want: our LB IPs (192.168.4.240-250) are LAN-only, and
+# Cloudflare refuses to proxy RFC1918 addresses anyway.
+
+serviceMonitor:
+  enabled: true
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { memory: 256Mi }

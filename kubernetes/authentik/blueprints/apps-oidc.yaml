@@ -1,0 +1,181 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# OIDC providers + applications for every app that supports native SSO.
+# Client secrets come from environment variables that the chart projects
+# from the `authentik-secrets` Secret (populated by ESO from Vaultwarden).
+#
+# Apps in this file:
+#   - Grafana       https://grafana.leonvdbeek.com
+#   - Nextcloud     https://nextcloud.leonvdbeek.com
+#   - immich        https://immich.leonvdbeek.com
+#   - lenovium      https://lenovium-proxmox.leonvdbeek.com
+#   - portainer     https://portainer.leonvdbeek.com
+#   - proxmox       https://proxmox.leonvdbeek.com
+#
+# Client IDs are captured as-is from the existing instance so OIDC
+# clients (Grafana, Nextcloud, …) don't need reconfiguring.
+
+version: 1
+metadata:
+  name: OIDC providers and applications
+
+# Avoid repeating the same flow/scope refs over and over.
+context:
+  authz_flow: !Find [authentik_flows.flow, [slug, default-provider-authorization-implicit-consent]]
+  invalidation_flow: !Find [authentik_flows.flow, [slug, default-provider-invalidation-flow]]
+  openid: !Find [authentik_providers_oauth2.scopemapping, [scope_name, openid]]
+  profile: !Find [authentik_providers_oauth2.scopemapping, [scope_name, profile]]
+  email: !Find [authentik_providers_oauth2.scopemapping, [scope_name, email]]
+
+entries:
+  # ─── Grafana ──────────────────────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for Grafana"
+    attrs:
+      client_type: confidential
+      client_id: uOMIi7ZHlULreHepRuVpp1vhQNcjcidMpRsD5q7I
+      client_secret: !Env AUTHENTIK_GRAFANA_CLIENT_SECRET
+      redirect_uris:
+        - url: "https://grafana.leonvdbeek.com/login/generic_oauth"
+          matching_mode: strict
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: grafana
+    attrs:
+      name: Grafana
+      provider: !Find [authentik_core.provider, [name, "Provider for Grafana"]]
+      meta_launch_url: "https://grafana.leonvdbeek.com"
+
+  # ─── Nextcloud ────────────────────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for Nextcloud"
+    attrs:
+      client_type: confidential
+      client_id: ANucWfFv02pZvQQtfhCxFTqGupWjxhq5xGPclezk
+      client_secret: !Env AUTHENTIK_NEXTCLOUD_CLIENT_SECRET
+      redirect_uris:
+        - url: "https://nextcloud.leonvdbeek.com/apps/user_oidc/code"
+          matching_mode: regex
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: nextcloud
+    attrs:
+      name: Nextcloud
+      provider: !Find [authentik_core.provider, [name, "Provider for Nextcloud"]]
+      meta_launch_url: "https://nextcloud.leonvdbeek.com"
+
+  # ─── immich ───────────────────────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for immich"
+    attrs:
+      client_type: confidential
+      client_id: RyYGWu7QCfAkMCwHaQZhGwwL2vFDRt3P2sAYpPC9
+      client_secret: !Env AUTHENTIK_IMMICH_CLIENT_SECRET
+      redirect_uris:
+        - { url: "https://immich.leonvdbeek.com/auth/login",         matching_mode: strict }
+        - { url: "app.immich:///oauth-callback",                     matching_mode: strict }
+        - { url: "https://immich.leonvdbeek.com/user-settings",      matching_mode: strict }
+        - { url: "http://192.168.4.73:2283/",                        matching_mode: strict }
+        - { url: "http://192.168.4.73:2283/auth/login",              matching_mode: strict }
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: immich
+    attrs:
+      name: immich
+      provider: !Find [authentik_core.provider, [name, "Provider for immich"]]
+      meta_launch_url: "https://immich.leonvdbeek.com"
+
+  # ─── lenovium (Proxmox node) ──────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for lenovium"
+    attrs:
+      client_type: confidential
+      client_id: klyai5Dv8bTT8Dj63xTHg2axsuKhMRjcc7uzXc8M
+      client_secret: !Env AUTHENTIK_LENOVIUM_CLIENT_SECRET
+      redirect_uris:
+        - url: "https://lenovium-proxmox.leonvdbeek.com"
+          matching_mode: strict
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: lenovium
+    attrs:
+      name: lenovium
+      provider: !Find [authentik_core.provider, [name, "Provider for lenovium"]]
+      meta_launch_url: "https://lenovium-proxmox.leonvdbeek.com"
+
+  # ─── portainer ────────────────────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for portainer"
+    attrs:
+      client_type: confidential
+      client_id: MtpY8nCWXhVXbQG2hEF0dJ2xn43kUmfV8IUuCD08
+      client_secret: !Env AUTHENTIK_PORTAINER_CLIENT_SECRET
+      redirect_uris:
+        - url: "https://portainer.leonvdbeek.com"
+          matching_mode: strict
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: portainer
+    attrs:
+      name: portainer
+      provider: !Find [authentik_core.provider, [name, "Provider for portainer"]]
+      meta_launch_url: "https://portainer.leonvdbeek.com"
+
+  # ─── proxmox cluster ──────────────────────────────────────────────────────
+  - model: authentik_providers_oauth2.oauth2provider
+    identifiers:
+      name: "Provider for proxmox"
+    attrs:
+      client_type: confidential
+      client_id: ucolLEInpUIzjDOuhDrvVc6OCQW6OvFLEatLjIlB
+      client_secret: !Env AUTHENTIK_PROXMOX_CLIENT_SECRET
+      redirect_uris:
+        - url: "https://proxmox.leonvdbeek.com"
+          matching_mode: strict
+      authorization_flow: !Context authz_flow
+      invalidation_flow: !Context invalidation_flow
+      property_mappings:
+        - !Context openid
+        - !Context profile
+        - !Context email
+  - model: authentik_core.application
+    identifiers:
+      slug: proxmox
+    attrs:
+      name: proxmox
+      provider: !Find [authentik_core.provider, [name, "Provider for proxmox"]]
+      meta_launch_url: "https://proxmox.leonvdbeek.com"

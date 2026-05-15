@@ -20,3 +20,17 @@ nodeSelector:
 tolerations:
   - key: node-role.kubernetes.io/control-plane
     effect: NoSchedule
+
+# The CSI controller calls the Proxmox API using the short hostnames that
+# Proxmox itself reports for each node (`lenovo-01/-02/-03`). Inside the
+# pod we don't share my workstation's DHCP-provided search domain, so the
+# bare names won't resolve via CoreDNS. The chart doesn't expose
+# `dnsConfig.searches`, so we pin /etc/hosts entries instead — same fix,
+# fewer moving parts. Re-IP a node? Update the IPs here and re-apply.
+hostAliases:
+  - ip: 192.168.4.79
+    hostnames: [lenovo-01]
+  - ip: 192.168.4.76
+    hostnames: [lenovo-02]
+  - ip: 192.168.4.29
+    hostnames: [lenovo-03]

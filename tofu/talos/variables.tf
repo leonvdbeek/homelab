@@ -32,6 +32,18 @@ variable "cluster_name" {
   default     = "homelab"
 }
 
+variable "cluster_vip" {
+  description = "Shared IP for the Kubernetes API. Talos floats it across control-plane nodes via ARP, so the kube-API survives any single node being down. Must be a free IP on the VM's L2 segment (same subnet as the DHCP-assigned node IPs)."
+  type        = string
+  default     = "192.168.4.60"
+}
+
+variable "vm_network_interface" {
+  description = "Interface name inside the Talos VM that the VIP attaches to. virtio NICs on PVE 8+ get predictable names; `ens18` is correct for our single-NIC layout."
+  type        = string
+  default     = "ens18"
+}
+
 variable "install_disk" {
   description = "Disk Talos installs to. With virtio-scsi the first disk is /dev/sda."
   type        = string

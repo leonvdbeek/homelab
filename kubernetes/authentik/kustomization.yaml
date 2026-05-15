@@ -1,0 +1,32 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: authentik
+
+resources:
+  - namespace.yaml
+  - httproute.yaml
+  # secret.enc.yaml (DB password, secret_key, bootstrap creds, per-app
+  # OIDC client secrets) is sops-encrypted; apply it out-of-band:
+  # `sops -d secret.enc.yaml | kubectl apply -f -`.
+
+# Glue every blueprint YAML into one ConfigMap that the helm chart
+# mounts at /blueprints/local/. Server + worker pods re-read these on
+# startup.
+configMapGenerator:
+  - name: authentik-blueprints
+    files:
+      - blueprints/brand.yaml
+      - blueprints/groups.yaml
+      - blueprints/proxy-outpost.yaml
+      - blueprints/apps-oidc.yaml
+    options:
+      disableNameSuffixHash: true
+
+helmCharts:
+  - name: authentik
+    repo: https://charts.goauthentik.io
+    version: "2024.12.2"
+    releaseName: authentik
+    namespace: authentik
+    valuesFile: values.yaml

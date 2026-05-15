@@ -1,0 +1,20 @@
+---
+# One wildcard certificate for *.leonvdbeek.com. cert-manager writes
+# the resulting tls.crt/tls.key into the named Secret in the gateway
+# namespace, which the shared Gateway listener references.
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: wildcard-leonvdbeek-com
+  namespace: gateway
+spec:
+  secretName: wildcard-leonvdbeek-com-tls
+  duration: 2160h   # 90d — Let's Encrypt's max
+  renewBefore: 720h # 30d
+  dnsNames:
+    - "leonvdbeek.com"
+    - "*.leonvdbeek.com"
+  issuerRef:
+    name: letsencrypt
+    kind: ClusterIssuer
+    group: cert-manager.io

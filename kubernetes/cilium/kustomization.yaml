@@ -1,0 +1,11 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Cilium itself is installed by tofu (see ../../tofu/talos/cilium.tf) because
+# the chart install must run on a freshly-patched Talos config (no Flannel,
+# no kube-proxy). This kustomization only ships the post-install K8s
+# resources that the chart doesn't provide: the LB IP pool, the L2
+# announcement policy, and the shared Gateway.
+resources:
+  - lb-pool.yaml
+  - gateway.yaml

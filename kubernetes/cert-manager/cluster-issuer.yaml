@@ -1,0 +1,23 @@
+---
+# Single ClusterIssuer for the whole cluster — Let's Encrypt production,
+# DNS-01 against Cloudflare. The API token lives in Vaultwarden and is
+# pulled by ESO into the `cloudflare-api-token` Secret.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: leon.vandebeek@xs4all.nl
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
+        selector:
+          dnsZones:
+            - leonvdbeek.com

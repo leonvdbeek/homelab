@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://goauthentik.io/blueprints/schema.json
+# Default brand — controls UI text and which flows are used for login,
+# enrollment, password recovery, etc. One per Authentik instance unless
+# you're doing per-domain branding.
+version: 1
+metadata:
+  name: Brand — Léon's hosting
+entries:
+  - model: authentik_brands.brand
+    identifiers:
+      domain: authentik-default
+    attrs:
+      branding_title: "Léon's hosting"
+      branding_logo: ""
+      branding_favicon: ""
+      default: true
+      flow_authentication: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      flow_invalidation: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      flow_unenrollment: null
+      flow_user_settings: !Find [authentik_flows.flow, [slug, default-user-settings-flow]]
+      flow_device_code: null
+      flow_recovery: null
