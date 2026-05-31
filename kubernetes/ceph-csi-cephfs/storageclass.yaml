@@ -1,0 +1,41 @@
+---
+# RWX StorageClass backed by the `homelab` CephFS. Provisioner creates a
+# subvolume under group `k8s` per PVC; the volume is mountable on every
+# node simultaneously (kernel CephFS client via the DaemonSet).
+#
+# Use this for state that multiple pods need to share (Vaultwarden
+# attachments today; whatever else needs RWX later).
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: proxmox-cephfs
+  annotations:
+    # Not the cluster default — proxmox-ceph-pool stays default for the
+    # common RWO case (postgres, vault Raft, etc.).
+    storageclass.kubernetes.io/is-default-class: "false"
+provisioner: cephfs.csi.ceph.com
+parameters:
+  clusterID: "dde1ef8f-a8de-4e61-88f5-f563020644eb"
+  fsName: "homelab"
+  # Where subvolume metadata + data live (created by `pveceph fs create`).
+  pool: "homelab_data"
+
+  # Talos doesn't ship the `ceph` kernel module, so the kernel client
+  # mount fails with "Module ceph not found". ceph-fuse is bundled in
+  # the ceph-csi-cephfs container image and works without kernel-side
+  # support.
+  mounter: "fuse"
+
+  # Credentials Secret used for *provisioning* (creating subvolumes).
+  csi.storage.k8s.io/provisioner-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/provisioner-secret-namespace: ceph-csi-cephfs
+  csi.storage.k8s.io/controller-expand-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/controller-expand-secret-namespace: ceph-csi-cephfs
+
+  # Credentials Secret used for *mounting* (node plugin).
+  csi.storage.k8s.io/node-stage-secret-name: csi-cephfs-secret
+  csi.storage.k8s.io/node-stage-secret-namespace: ceph-csi-cephfs
+
+reclaimPolicy: Delete
+allowVolumeExpansion: true
+volumeBindingMode: Immediate

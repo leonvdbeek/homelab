@@ -5,8 +5,9 @@ namespace: external-dns
 
 resources:
   - namespace.yaml
-  # secret.enc.yaml (Cloudflare API token) is sops-encrypted; apply it
-  # out-of-band: `sops -d secret.enc.yaml | kubectl apply -f -`.
+  - externalsecret.yaml
+  # `cloudflare-api-token` materialized by ESO from Vault path
+  # `kv/cloudflare/api-token` (shared with cert-manager).
 
 helmCharts:
   - name: external-dns

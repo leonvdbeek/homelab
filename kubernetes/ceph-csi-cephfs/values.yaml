@@ -1,0 +1,68 @@
+# ceph-csi-cephfs helm values.
+# Reference: https://github.com/ceph/ceph-csi/tree/devel/charts/ceph-csi-cephfs
+#
+# Talks directly to the Proxmox-managed Ceph cluster (mons on the LAN
+# IPs), NOT via the Proxmox API. The CephFS `homelab` was created with
+# `pveceph fs create --name homelab` and the matching CephX user is
+# `client.kubernetes-cephfs` (see secret.enc.yaml).
+
+# Tell the CSI driver about the Ceph cluster. clusterID is the FSID
+# (`ceph fsid` on any Proxmox node), monitors are the public-facing
+# mon addresses. The driver multiplexes by clusterID, so this list
+# could grow if we ever bolt on a second Ceph cluster.
+csiConfig:
+  - clusterID: "dde1ef8f-a8de-4e61-88f5-f563020644eb"
+    monitors:
+      - "192.168.4.79:6789"
+      - "192.168.4.76:6789"
+      - "192.168.4.29:6789"
+    cephFS:
+      # ceph-csi puts every dynamically provisioned subvolume under
+      # this subvolume group on the FS. Created lazily on first PVC.
+      subvolumeGroup: "k8s"
+
+# We provide the credentials + StorageClass ourselves so the rest of
+# the chart stays vanilla and we keep secrets sops-encrypted.
+secret:
+  create: false
+storageClass:
+  create: false
+
+provisioner:
+  replicaCount: 2
+  resources:
+    csiProvisioner:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { memory: 256Mi }
+    csiResizer:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { memory: 256Mi }
+    csiSnapshotter:
+      requests: { cpu: 50m, memory: 64Mi }
+      limits:   { memory: 256Mi }
+    csiCephfsPlugin:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { memory: 512Mi }
+    liveness:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits:   { memory: 64Mi }
+
+nodeplugin:
+  # The node plugin is a DaemonSet — kubelet asks the local pod to
+  # bind-mount the CephFS into the consuming pod's volume path.
+  updateStrategy: RollingUpdate
+  resources:
+    registrar:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits:   { memory: 64Mi }
+    csiCephfsPlugin:
+      requests: { cpu: 100m, memory: 128Mi }
+      limits:   { memory: 512Mi }
+    liveness:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits:   { memory: 64Mi }
+
+# Quieter steady-state logs — bump to 5 if you're debugging a mount
+# that won't come up.
+logLevel: 1
+sidecarLogLevel: 1

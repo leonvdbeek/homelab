@@ -22,3 +22,19 @@ spec:
   databaseReclaimPolicy: retain
   # ensure: present | absent — present creates if missing, absent drops.
   ensure: present
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: vaultwarden
+  namespace: postgres
+spec:
+  cluster:
+    name: pg
+  name: vaultwarden
+  owner: vaultwarden
+  encoding: UTF8
+  localeCollate: en_US.utf8
+  localeCType: en_US.utf8
+  databaseReclaimPolicy: retain
+  ensure: present

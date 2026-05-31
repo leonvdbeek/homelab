@@ -7,3 +7,8 @@ resources:
   - namespace.yaml
   - cluster.yaml
   - databases.yaml
+  # Per-role basic-auth Secrets (authentik-db, vaultwarden-db, …) are
+  # materialized by ESO from Vault. CNPG reconciles role passwords
+  # against these Secrets continuously, so updates flow through to
+  # Postgres on the next ESO refresh (default 1h).
+  - externalsecret.yaml

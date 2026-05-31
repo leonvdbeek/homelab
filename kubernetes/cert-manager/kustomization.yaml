@@ -5,9 +5,10 @@ resources:
   - namespace.yaml
   - cluster-issuer.yaml
   - wildcard-cert.yaml
-  # secret.enc.yaml (Cloudflare API token) is sops-encrypted; apply it
-  # out-of-band: `sops -d secret.enc.yaml | kubectl apply -f -`.
-  # See ../README.md for the bring-up sequence.
+  - externalsecret.yaml
+  # `cloudflare-api-token` Secret materialized by ESO from Vault path
+  # `kv/cloudflare/api-token`. Same token re-used by external-dns from
+  # the same Vault entry (independent ExternalSecret in that namespace).
 
 helmCharts:
   - name: cert-manager

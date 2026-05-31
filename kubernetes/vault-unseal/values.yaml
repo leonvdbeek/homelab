@@ -1,0 +1,74 @@
+# Single-node Vault whose only job is to run the `transit` engine that
+# the HA cluster (../vault/) uses for auto-unseal. Shamir-sealed by hand
+# once per power-on event; never exposed outside the cluster.
+#
+# Reference: https://github.com/hashicorp/vault-helm
+
+global:
+  enabled: true
+  tlsDisable: true
+
+injector:
+  enabled: false
+
+server:
+  image:
+    repository: hashicorp/vault
+    tag: "1.18.3"
+
+  # Standalone (file storage) — explicitly NOT HA. Three replicas of an
+  # unseal Vault would just multiply the manual unseal burden.
+  dev:
+    enabled: false
+  ha:
+    enabled: false
+  standalone:
+    enabled: true
+    config: |
+      ui = true
+
+      listener "tcp" {
+        tls_disable = 1
+        address     = "[::]:8200"
+        cluster_address = "[::]:8201"
+      }
+
+      storage "file" {
+        path = "/vault/data"
+      }
+
+      # Surface metrics for the in-cluster Prometheus.
+      telemetry {
+        prometheus_retention_time = "30s"
+        disable_hostname          = true
+      }
+
+  dataStorage:
+    enabled: true
+    size: 1Gi
+    storageClass: proxmox-ceph-pool
+    accessMode: ReadWriteOnce
+
+  # Tiny footprint — this thing answers one HTTP call per HA pod boot.
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+  # No ServiceAccount discovery needed — this Vault doesn't talk to the
+  # k8s API and has no auto-unseal of its own.
+  serviceAccount:
+    create: true
+
+  # Cluster-internal Service only. No Ingress / HTTPRoute on this one —
+  # the HA cluster reaches it via http://vault-unseal.vault-unseal.svc:8200.
+  service:
+    enabled: true
+    type: ClusterIP
+
+ui:
+  # UI binary is built in; only enable a Service for it if we ever need
+  # the web UI for transit admin. CLI via `kubectl exec` works fine.
+  enabled: false

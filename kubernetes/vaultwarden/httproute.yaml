@@ -1,0 +1,21 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+spec:
+  parentRefs:
+    - name: lan
+      namespace: gateway
+      sectionName: https-lenovium
+  hostnames:
+    # `bitwarden.lenovium.leonvdbeek.com` is reserved for the
+    # portainer-proxy redirect to the existing portainer Vaultwarden
+    # while the two instances run in parallel. This in-cluster instance
+    # gets its own subdomain.
+    - vaultwarden.lenovium.leonvdbeek.com
+  rules:
+    - backendRefs:
+        - name: vaultwarden
+          port: 80

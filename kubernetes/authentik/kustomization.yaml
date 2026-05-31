@@ -6,9 +6,13 @@ namespace: authentik
 resources:
   - namespace.yaml
   - httproute.yaml
-  # secret.enc.yaml (DB password, secret_key, bootstrap creds, per-app
-  # OIDC client secrets) is sops-encrypted; apply it out-of-band:
-  # `sops -d secret.enc.yaml | kubectl apply -f -`.
+  - externalsecret.yaml
+  # The `authentik-secrets` Secret is materialized by ESO from
+  # `kv/authentik/secrets` in Vault. To rotate a value:
+  #   vault kv patch kv/authentik/secrets KEY=newvalue
+  # ESO picks it up within `refreshInterval` (default 1h). Force an
+  # immediate refresh with:
+  #   kubectl -n authentik annotate externalsecret authentik-secrets force-sync=$(date +%s) --overwrite
 
 # Glue every blueprint YAML into one ConfigMap that the helm chart
 # mounts at /blueprints/local/. Server + worker pods re-read these on
