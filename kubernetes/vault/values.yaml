@@ -1,0 +1,132 @@
+# Vault HA on Raft, auto-unsealed via transit against ../vault-unseal/.
+#
+# Reference: https://github.com/hashicorp/vault-helm
+#
+# Cluster topology:
+#   - 3 replicas (one per Talos worker — anti-affinity below)
+#   - Raft integrated storage on proxmox-ceph-pool PVCs (10Gi each)
+#   - Auto-unseal via transit on vault-unseal.vault-unseal.svc:8200
+#   - Cilium Gateway terminates TLS upstream; pods speak plain HTTP
+
+global:
+  enabled: true
+  tlsDisable: true
+
+injector:
+  # ESO is the secret-consumption path; the sidecar injector is unused.
+  enabled: false
+
+server:
+  image:
+    repository: hashicorp/vault
+    tag: "1.18.3"
+
+  # The transit token lives in this Secret (see secret.enc.yaml). Vault
+  # reads it via VAULT_TOKEN at startup to call transit/decrypt.
+  extraSecretEnvironmentVars:
+    - envName: VAULT_TOKEN
+      secretName: vault-transit-token
+      secretKey: token
+
+  dev:
+    enabled: false
+
+  standalone:
+    enabled: false
+
+  ha:
+    enabled: true
+    replicas: 3
+    raft:
+      enabled: true
+      setNodeId: true
+      config: |
+        ui = true
+
+        listener "tcp" {
+          tls_disable     = 1
+          address         = "[::]:8200"
+          cluster_address = "[::]:8201"
+        }
+
+        storage "raft" {
+          path = "/vault/data"
+
+          retry_join {
+            leader_api_addr = "http://vault-0.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://vault-1.vault-internal:8200"
+          }
+          retry_join {
+            leader_api_addr = "http://vault-2.vault-internal:8200"
+          }
+        }
+
+        # Auto-unseal via transit on the dedicated unseal Vault. The
+        # VAULT_TOKEN env var (sourced from vault-transit-token Secret)
+        # authenticates this call.
+        seal "transit" {
+          address    = "http://vault-unseal.vault-unseal.svc.cluster.local:8200"
+          mount_path = "transit/"
+          key_name   = "autounseal"
+          tls_skip_verify = "true"
+        }
+
+        # Service-registration keeps `vault-active` / `vault-standby`
+        # endpoint labels in sync so the HTTPRoute routes only to the
+        # active pod.
+        service_registration "kubernetes" {}
+
+        telemetry {
+          prometheus_retention_time = "30s"
+          disable_hostname          = true
+        }
+
+  dataStorage:
+    enabled: true
+    size: 10Gi
+    storageClass: proxmox-ceph-pool
+    accessMode: ReadWriteOnce
+
+  # Spread the 3 pods across distinct Talos nodes. Default chart
+  # anti-affinity is soft; keep it soft so a node-loss event reschedules
+  # rather than wedging the StatefulSet.
+  affinity: |
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchLabels:
+                app.kubernetes.io/name: {{ template "vault.name" . }}
+                app.kubernetes.io/instance: "{{ .Release.Name }}"
+                component: server
+            topologyKey: kubernetes.io/hostname
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+
+  serviceAccount:
+    create: true
+    serviceDiscovery:
+      enabled: true
+
+  # Three Services are created by the chart:
+  #   vault           — headless, fans out to all replicas
+  #   vault-active    — selectors target only the active pod (UI/API)
+  #   vault-standby   — selectors target standby pods (read-only DR)
+  # The HTTPRoute backendRefs `vault-active` so external traffic always
+  # lands on the leader.
+  service:
+    enabled: true
+    type: ClusterIP
+
+ui:
+  enabled: true
+  serviceType: ClusterIP
+  externalPort: 8200

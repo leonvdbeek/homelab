@@ -10,13 +10,31 @@ metadata:
   namespace: portainer-proxy
 data:
   default.conf: |
+    # Pick the upstream hostname for a given incoming Host header.
+    #
+    # Default behaviour: strip the `.lenovium` label so
+    #   <svc>.lenovium.leonvdbeek.com → <svc>.leonvdbeek.com on portainer.
+    #
+    # Overrides: where the in-cluster subdomain doesn't line up with a
+    # service name on portainer's Traefik. Add a line per override.
+    map $host $upstream_host {
+      default                              "";
+      "~^(?<svc>[^.]+)\.lenovium\.leonvdbeek\.com$"  $svc.leonvdbeek.com;
+      # Vaultwarden lives behind `vault.leonvdbeek.com` on portainer,
+      # but the cluster name is bitwarden.lenovium for clarity.
+      bitwarden.lenovium.leonvdbeek.com    vault.leonvdbeek.com;
+    }
+
     server {
       listen 80 default_server;
-      # Capture the first label of the hostname (the service name).
-      server_name ~^(?<svc>[^.]+)\.lenovium\.leonvdbeek\.com$;
+      server_name ~^[^.]+\.lenovium\.leonvdbeek\.com$;
+
+      # If the map didn't resolve a target, return 502 so the caller
+      # sees something actionable instead of a weird upstream cert error.
+      if ($upstream_host = "") { return 502; }
 
       location / {
-        proxy_set_header Host                $svc.leonvdbeek.com;
+        proxy_set_header Host                $upstream_host;
         proxy_set_header X-Forwarded-For     $remote_addr;
         proxy_set_header X-Real-IP           $remote_addr;
         proxy_set_header X-Forwarded-Proto   https;
@@ -29,7 +47,7 @@ data:
         # because Traefik may present a per-service LE cert and we don't
         # want to maintain a CA bundle in here.
         proxy_ssl_server_name on;
-        proxy_ssl_name        $svc.leonvdbeek.com;
+        proxy_ssl_name        $upstream_host;
         proxy_ssl_verify      off;
 
         proxy_pass https://192.168.4.73;

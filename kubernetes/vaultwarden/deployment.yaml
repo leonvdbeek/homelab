@@ -1,0 +1,126 @@
+---
+# Vaultwarden HA on the cluster.
+#
+# Database state lives in the shared CNPG `pg` cluster. The /data
+# directory (attachments, sends, icon cache, tmp) lives on a single
+# RWX PVC backed by CephFS — both replicas read/write the same files
+# so attachments uploaded on one pod are immediately visible from the
+# other. The RSA signing key is also on the shared PVC, so JWT
+# verification works regardless of which pod minted the token.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data
+  namespace: vaultwarden
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: proxmox-cephfs
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: vaultwarden
+  labels:
+    app: vaultwarden
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: vaultwarden
+  template:
+    metadata:
+      labels:
+        app: vaultwarden
+    spec:
+      affinity:
+        # Spread replicas across distinct Talos nodes so a single node
+        # loss only takes one pod down.
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: vaultwarden
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: vaultwarden
+          # Pinned to the same minor as the source instance for the
+          # migration. Bump after verification.
+          image: vaultwarden/server:1.36.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: DOMAIN
+              value: https://vaultwarden.lenovium.leonvdbeek.com
+            - name: ROCKET_ADDRESS
+              value: "0.0.0.0"
+            - name: ROCKET_PORT
+              value: "8080"
+            - name: ROCKET_PROFILE
+              value: release
+            # The new URL is private — don't let randoms create accounts.
+            - name: SIGNUPS_ALLOWED
+              value: "false"
+            - name: INVITATIONS_ALLOWED
+              value: "true"
+            - name: DATA_FOLDER
+              value: /data
+            - name: ATTACHMENTS_FOLDER
+              value: /data/attachments
+            - name: SENDS_FOLDER
+              value: /data/sends
+            - name: ICON_CACHE_FOLDER
+              value: /data/icon_cache
+            - name: TMP_FOLDER
+              value: /data/tmp
+            # RSA key on the shared volume so both pods sign with the
+            # same key. Vaultwarden auto-generates it on first boot if
+            # absent; the migration runbook overwrites it with the
+            # key from the portainer instance so existing sessions
+            # continue to validate.
+            - name: RSA_KEY_FILENAME
+              value: /data/rsa_key.pem
+            # Postgres DSN. Password from vaultwarden-secrets.
+            - name: DATABASE_URL
+              value: postgresql://vaultwarden:$(VW_DB_PASSWORD)@pg-rw.postgres.svc.cluster.local:5432/vaultwarden
+          envFrom:
+            - secretRef:
+                name: vaultwarden-secrets
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /alive
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            failureThreshold: 4
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data

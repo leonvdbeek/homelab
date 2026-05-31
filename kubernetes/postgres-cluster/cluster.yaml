@@ -53,6 +53,11 @@ spec:
         ensure: present
         passwordSecret:
           name: authentik-db
+      - name: vaultwarden
+        login: true
+        ensure: present
+        passwordSecret:
+          name: vaultwarden-db
 
   monitoring:
     enablePodMonitor: true

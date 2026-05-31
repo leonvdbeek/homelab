@@ -1,0 +1,20 @@
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  parentRefs:
+    - name: lan
+      namespace: gateway
+      sectionName: https-lenovium
+  hostnames:
+    - vault.lenovium.leonvdbeek.com
+  rules:
+    - backendRefs:
+        # vault-active follows the Raft leader — UI + write API need to
+        # land there. Standbys forward writes anyway, but routing the UI
+        # to the active pod avoids a redirect hop.
+        - name: vault-active
+          port: 8200

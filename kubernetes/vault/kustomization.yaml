@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: vault
+
+resources:
+  - namespace.yaml
+  - httproute.yaml
+  # secret.enc.yaml carries the transit-unseal token. Bootstrap it
+  # out-of-band before applying the helm chart, since the StatefulSet
+  # references it via envFrom:
+  #   sops -d secret.enc.yaml | kubectl apply -f -
+
+helmCharts:
+  - name: vault
+    repo: https://helm.releases.hashicorp.com
+    version: "0.30.0"
+    releaseName: vault
+    namespace: vault
+    valuesFile: values.yaml

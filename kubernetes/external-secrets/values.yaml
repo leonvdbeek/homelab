@@ -1,0 +1,26 @@
+# External Secrets Operator (ESO).
+# Reference: https://external-secrets.io/latest/
+
+# Install the CRDs as part of the helm release. ESO ships them via the
+# chart, so we don't need a separate CRD apply step.
+installCRDs: true
+
+# Use the controller's ServiceAccount as the Vault identity. Vault's
+# kubernetes auth method validates this SA's token via TokenReview,
+# and the policy bound to its role lets it read kv/data/* across all
+# apps.
+serviceAccount:
+  create: true
+  name: external-secrets
+
+# Single replica for each ESO component — homelab scale; if any one
+# pod is down, the worst case is ExternalSecrets miss a refresh tick.
+replicaCount: 1
+webhook:
+  replicaCount: 1
+certController:
+  replicaCount: 1
+
+resources:
+  requests: { cpu: 50m, memory: 64Mi }
+  limits:   { memory: 256Mi }
