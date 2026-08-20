@@ -20,7 +20,7 @@ numbers.
 | Dev | Model | Bus / passthrough | Capacity | Notes |
 |-----|-------|-------------------|----------|-------|
 | `nvme0n1` | Crucial P1 `CT1000P1SSD8` (SN 2004E285575C) | NVMe, `0000:03:00.0` (whole device) | 1 TB | DRAM-less QLC; 16% wear, 7059 PoH |
-| `sdb` | SanDisk `SD8TB8U256G1001` (SN 174062804891) | SATA on ASMedia ASM1064, `0000:02:00.0` | 256 GB | **Flaky SATA link — see below** |
+| SanDisk `SD8TB8U256G1001` (SN 174062804891) | — | SATA on ASMedia ASM1064, `0000:02:00.0` | 256 GB | Node shuffles (`sda`/`sdb`); ID by serial. Worn — slow writes |
 
 ---
 
@@ -43,28 +43,35 @@ run (e.g. `--runtime=300` or a full-device fill).
 
 ---
 
-## SanDisk 256GB SATA SSD (`sdb`) — INVALID: flaky SATA link
+## SanDisk 256GB SATA SSD — valid (after reseating cable, 2026-08-21)
 
-The SSD, freshly wired to the ASMedia ASM1064 controller, throws **SATA
-interface CRC errors** under load. The kernel logs `ICRC ABRT` / `interface fatal
-error` / `ATA bus error`, hard-resets the link, and downgrades it to **UDMA/33**
-(33 MB/s cap). That degradation — not the flash — is why fio saw single-digit
-MB/s and multi-second latencies (and one run failed outright).
+> Device-node names shuffle across reboots — the SanDisk was `sdb` in the first
+> run and `sda` here. **Always identify it by serial (174062804891), never by
+> `/dev/sdX`.** (The first run's `/dev/sdb` is the 32 GB VM boot disk after a
+> reboot, so a blind re-run of the old command would have hit the boot disk.)
 
-Evidence:
-- `dmesg`: `ata10.00: error: { ICRC ABRT }`, `interface fatal error`, repeated
-  `hard resetting link`, `configured for UDMA/33`.
-- SMART `199 UDMA_CRC_Error_Count = 595` (interface CRC errors accumulating).
-- On a freshly-reset clean link, a short seq read hit **184 MB/s** — i.e. the
-  drive is fine when the link holds.
-- SMART health **PASSED**: 0 reallocated, 0 pending, 0 reported-uncorrect. Media
-  is healthy (power-on 34,385 h).
+Link now negotiated at **SATA 3.2, 6.0 Gb/s**. `UDMA_CRC_Error_Count` held flat
+at 595 across the whole destructive suite (no new interface errors); no ICRC /
+ATA-bus errors in dmesg.
 
-**Root cause:** marginal SATA **data cable / power / connector** (classic ICRC +
-UDMA-downgrade signature), not the disk or the controller.
+| Test | Bandwidth | IOPS | Avg lat | p99 | p99.99 |
+|------|-----------|------|---------|-----|--------|
+| Seq read (1M, QD32) | 475 MB/s | 452 | 70.9 ms | 263 ms | 312 ms |
+| Seq write (1M, QD32) | **77.7 MB/s** | 73 | 434 ms | 1418 ms | 3339 ms |
+| Rand read (4K, QD64×4) | 149 MB/s | 36,455 | 6.9 ms | 12.3 ms | 17.4 ms |
+| Rand write (4K, QD64×4) | 72 MB/s | 17,571 | 14.3 ms | 57.4 ms | 320.9 ms |
 
-**Action:** reseat or replace the SATA data cable (and check the power lead),
-then re-run the fio suite. Numbers above for `sdb` should be discarded.
+**First run was invalid — flaky SATA cable, now fixed.** Initially the drive threw
+`ICRC ABRT` / `ATA bus error`, hard-reset the link repeatedly, and downgraded to
+**UDMA/33** (33 MB/s cap) — a marginal **physical connector**, not the flash and
+not the passthrough. Reseating the SATA data + power connectors (no config change)
+restored full-speed operation, which also confirms the ASM1064 **passthrough path
+is healthy** (full-speed reads flow through it).
+
+**Drive-health caveat:** writes are genuinely slow (~78 MB/s seq vs the X400's
+~500 MB/s spec) while reads are full-speed. That is *not* a link issue (zero CRC
+errors) — it's a worn drive: 34,385 power-on hours, low wear indicator. Fine for
+read-mostly / scratch use; don't rely on it for write-heavy workloads.
 
 ---
 
@@ -84,6 +91,9 @@ drive reads healthily; it is not comparable to the queued fio numbers above.
 
 ---
 
-## Pending
+## Follow-ups (optional)
 
-- **SanDisk SSD re-benchmark** after the SATA cable is fixed.
+- **NVMe sustained-write floor** — long/full-device write run to capture the
+  post-SLC-cache number for the DRAM-less QLC P1.
+- **SanDisk write speed** — worn drive; treat as read-mostly/scratch, replace if
+  write throughput matters.
