@@ -13,11 +13,10 @@ resource "proxmox_virtual_environment_vm" "truenas" {
   # free BAR2 on hostpci0 (the NVMe) so it starts.
   kvm_arguments = "-set device.hostpci0.x-msix-relocation=bar2"
 
-  # Disabled during provisioning so tofu doesn't block waiting for a guest agent
-  # that only exists after TrueNAS is installed. Flip to true once installed and
-  # the agent is enabled inside TrueNAS (it ships qemu-guest-agent by default).
+  # TrueNAS is installed and runs qemu-guest-agent, so PVE can read its IP and
+  # do graceful shutdowns.
   agent {
-    enabled = false
+    enabled = true
   }
 
   # Default std VGA renders the TrueNAS installer's framebuffer as garbage under
@@ -43,8 +42,8 @@ resource "proxmox_virtual_environment_vm" "truenas" {
 
   scsi_hardware = "virtio-scsi-single"
 
-  # Prefer the boot disk; fall through to the installer ISO while it's empty.
-  boot_order = ["scsi0", "ide3"]
+  # TrueNAS is installed; boot straight from the disk (installer ISO removed).
+  boot_order = ["scsi0"]
 
   efi_disk {
     datastore_id = var.boot_disk_datastore
@@ -59,10 +58,6 @@ resource "proxmox_virtual_environment_vm" "truenas" {
     iothread     = true
     discard      = "on"
     ssd          = true
-  }
-
-  cdrom {
-    file_id = proxmox_download_file.truenas_iso.id
   }
 
   network_device {
