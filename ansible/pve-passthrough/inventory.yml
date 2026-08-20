@@ -1,0 +1,8 @@
+all:
+  hosts:
+    m920x:
+      ansible_host: m920x.local.leonvdbeek.com
+      ansible_user: root
+  vars:
+    ansible_port: 22
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"

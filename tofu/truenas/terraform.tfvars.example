@@ -1,0 +1,15 @@
+# Copy to terraform.tfvars and adjust as needed. All values have working
+# defaults for the m920x host; override only what differs.
+
+# node_name = "m920x"
+# vm_id     = 100
+# vm_memory_mb = 8192
+# vm_cpu_cores = 4
+
+# Bump this when a newer TrueNAS Community Edition release is out:
+# truenas_iso_url = "https://download.truenas.com/TrueNAS-SCALE-ElectricEel/24.10.2/TrueNAS-SCALE-24.10.2.iso"
+
+# Passthrough targets — only change if the PCI layout changes (verify with
+# `lspci -nn` on the host):
+# passthrough_nvme_pci_id = "0000:03:00.0"  # Crucial P1 1TB NVMe
+# passthrough_sata_pci_id = "0000:02:00.0"  # ASMedia ASM1064 SATA controller
