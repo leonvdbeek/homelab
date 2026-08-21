@@ -34,12 +34,14 @@ tofu/truenas/              the TrueNAS VM (OpenTofu, bpg/proxmox)
 
 ## 1. Prepare the host (once)
 
-Adds `intel_iommu=on iommu=pt` to the kernel cmdline, loads the vfio modules,
-and reboots only if something changed.
+Adds `intel_iommu=on iommu=pt` to the kernel cmdline and loads the vfio modules.
+This is part of the idempotent base runbook (`ansible/site.yml`); run it alone
+with the passthrough playbook. A reboot is needed the first time the cmdline
+changes — opt in with `-e pve_allow_reboot=true`.
 
 ```sh
-cd ansible/pve-passthrough
-ansible-playbook enable-passthrough.yml
+cd ansible
+ansible-playbook playbooks/pve-passthrough.yml -e pve_allow_reboot=true
 ```
 
 After it reboots, sanity-check on the host:
