@@ -1,0 +1,11 @@
+---
+# Base runbook for the Proxmox host(s). Idempotent and safe to re-run: on a
+# converged host nothing changes, and it never reboots unless you opt in.
+#
+#   Preview (no changes, show diffs):  ansible-playbook site.yml --check --diff
+#   Apply:                             ansible-playbook site.yml
+#   Apply and allow a reboot:          ansible-playbook site.yml -e pve_allow_reboot=true
+#
+# Run a single component instead:      ansible-playbook playbooks/<name>.yml
+- import_playbook: playbooks/pve-passthrough.yml
+- import_playbook: playbooks/pve-subscription-nag.yml

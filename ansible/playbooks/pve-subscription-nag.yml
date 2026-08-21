@@ -1,0 +1,74 @@
+---
+# Removes the "No valid subscription" popup from the Proxmox VE web UI.
+#
+# What this does:
+#   * Patches proxmox-widget-toolkit's proxmoxlib.js so the client-side
+#     `checked_command` short-circuits: it runs the requested command
+#     immediately instead of first querying the subscription status and
+#     showing the nag dialog. No server behaviour changes.
+#   * Keeps one pristine backup and restarts pveproxy only when it patches.
+#     (pveproxy restart briefly blips the web UI; running VMs are unaffected.)
+#
+# Idempotent: re-running detects the patch and does nothing.
+#
+# IMPORTANT: an `apt upgrade` of proxmox-widget-toolkit ships a fresh
+# proxmoxlib.js and reverts this patch. Just re-run the playbook afterwards.
+#
+# Context (checked 2026-08-21):
+#   * PVE 9.1, proxmox-widget-toolkit 5.1.2. The 5.x toolkit writes the anchor
+#     as `checked_command: function (orig_cmd) {` (note the space) — the older
+#     `function(orig_cmd)` one-liners do not match.
+- name: Disable the Proxmox subscription nag
+  hosts: proxmox
+  become: false  # already root
+  gather_facts: false
+
+  vars:
+    pkg_lib: /usr/share/javascript/proxmox-widget-toolkit/proxmoxlib.js
+
+  tasks:
+    - name: Ensure proxmoxlib.js exists
+      ansible.builtin.stat:
+        path: "{{ pkg_lib }}"
+      register: lib
+
+    - name: Assert the toolkit is installed
+      ansible.builtin.assert:
+        that: lib.stat.exists
+        fail_msg: "{{ pkg_lib }} not found — is this a Proxmox host?"
+
+    # rc == 0 means the short-circuit is already in place.
+    - name: Check whether the nag is already patched
+      ansible.builtin.command:
+        cmd: >-
+          grep -Pzoq
+          'checked_command: function ?\(orig_cmd\)\s*\{\s*orig_cmd\(\);'
+          {{ pkg_lib }}
+      register: nag_patched
+      changed_when: false
+      failed_when: false
+      check_mode: false  # read-only probe; must run even under --check
+
+    - name: Back up the pristine proxmoxlib.js (once)
+      ansible.builtin.copy:
+        src: "{{ pkg_lib }}"
+        dest: "{{ pkg_lib }}.nag.bak"
+        remote_src: true
+        force: false  # never clobber the first, pre-patch backup
+      when: nag_patched.rc != 0
+
+    - name: Short-circuit checked_command so the nag never fires
+      ansible.builtin.command:
+        cmd: >-
+          sed -Ezi
+          's/(checked_command: function ?\(orig_cmd\)\s*\{)/\1\n            orig_cmd();\n            return;/'
+          {{ pkg_lib }}
+      when: nag_patched.rc != 0
+      changed_when: true
+      notify: restart pveproxy
+
+  handlers:
+    - name: restart pveproxy
+      ansible.builtin.systemd:
+        name: pveproxy.service
+        state: restarted

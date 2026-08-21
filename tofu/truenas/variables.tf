@@ -64,7 +64,7 @@ variable "network_bridge" {
 
 # --- PCIe passthrough targets (verified on m920x, 2026-08-20) -----------------
 # Both devices already sit alone in their own IOMMU group, so no ACS override is
-# required. Enable IOMMU + vfio first via ansible/pve-passthrough.
+# required. Enable IOMMU + vfio first via ansible/ (playbooks/pve-passthrough.yml).
 
 variable "passthrough_nvme_pci_id" {
   description = "PCI address of the 1TB NVMe (Crucial P1, group 13) to pass through whole."

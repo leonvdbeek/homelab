@@ -4,7 +4,13 @@
 # What this does:
 #   * Adds `intel_iommu=on iommu=pt` to the kernel command line (GRUB).
 #   * Loads the vfio kernel modules at boot.
-#   * Reboots the host once, only if anything actually changed.
+#   * Requests a reboot if anything changed — but only actually reboots when
+#     `pve_allow_reboot=true` (default false), so re-running as part of the
+#     base runbook never reboots the host unexpectedly. When a change needs a
+#     reboot and it isn't allowed, it prints a "reboot pending" notice instead.
+#
+# Idempotent: on an already-configured host nothing changes and no reboot is
+# requested.
 #
 # Context for m920x (checked 2026-08-20):
 #   * Intel i7-8700, PVE 9.1 / kernel 6.17 — boots via GRUB (UEFI), NOT
@@ -16,10 +22,8 @@
 #   * Kernel 6.17 turns on the Intel IOMMU by default, but we still pin
 #     `intel_iommu=on iommu=pt` so the config is explicit and survives kernel
 #     default changes.
-#
-# Run:  ansible-playbook enable-passthrough.yml
 - name: Enable IOMMU + vfio for PCIe passthrough
-  hosts: m920x
+  hosts: proxmox
   become: false  # already root
   gather_facts: false
 
@@ -49,6 +53,7 @@
       notify:
         - update grub
         - reboot host
+        - note reboot pending
 
     - name: Load vfio modules at boot
       ansible.builtin.copy:
@@ -58,7 +63,9 @@
           vfio
           vfio_iommu_type1
           vfio_pci
-      notify: reboot host
+      notify:
+        - reboot host
+        - note reboot pending
 
   handlers:
     - name: update grub
@@ -68,3 +75,12 @@
     - name: reboot host
       ansible.builtin.reboot:
         reboot_timeout: 600
+      when: pve_allow_reboot | bool
+
+    - name: note reboot pending
+      ansible.builtin.debug:
+        msg: >-
+          Kernel cmdline / vfio config changed but pve_allow_reboot is false —
+          reboot the host manually, or re-run with `-e pve_allow_reboot=true`,
+          to apply.
+      when: not (pve_allow_reboot | bool)
