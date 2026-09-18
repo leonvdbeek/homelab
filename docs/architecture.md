@@ -128,9 +128,10 @@ the host. It imports:
   upgrade — just re-run.
 
 **`tofu/truenas/`** downloads the TrueNAS installer ISO to the node and creates
-the VM with both PCI devices attached. Proxmox credentials come from `.env`
-(`PROXMOX_VE_*`); the provider also SSHes to the node (root key/agent) to apply
-`hostpci`.
+the VM with both PCI devices attached. Proxmox credentials (`PROXMOX_VE_*`) are
+injected by [secretspec](https://secretspec.dev) — `secretspec run -- tofu …` —
+with the password held in Bitwarden; the provider also SSHes to the node (root
+key/agent) to apply `hostpci`.
 
 ## Boot / dependency order
 

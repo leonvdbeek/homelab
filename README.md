@@ -53,21 +53,25 @@ ssh root@m920x.local.leonvdbeek.com \
 
 ## 2. Create the VM
 
-Proxmox credentials come from the environment (`PROXMOX_VE_*` in `.env`).
+Proxmox credentials come from [secretspec](https://secretspec.dev): the
+`PROXMOX_VE_*` env the provider reads is declared in `secretspec.toml` and
+injected by `secretspec run`. Only the password is a real secret — it lives in
+Bitwarden (the `bw` provider); the endpoint/username/insecure flags are
+non-sensitive defaults in the manifest. Unlock the Bitwarden CLI once per shell
+(`export BW_SESSION=$(bw unlock --raw)`) so the `bw` provider can read it.
 
 > **Auth must be `root@pam` password login, not an API token.** Proxmox refuses
 > two things for token auth, both of which this VM needs: raw PCI passthrough
-> and the `args:` QEMU option. So `.env` sets `PROXMOX_VE_USERNAME=root@pam` +
-> `PROXMOX_VE_PASSWORD=...` — fill in the real root password before applying.
+> and the `args:` QEMU option — hence `PROXMOX_VE_USERNAME=root@pam` +
+> `PROXMOX_VE_PASSWORD`.
 
 ```sh
-# from the repo root, load your proxmox creds:
-set -a; source .env; set +a
+export BW_SESSION=$(bw unlock --raw)   # once per shell
 
 cd tofu/truenas
 tofu init
-tofu plan
-tofu apply
+secretspec run -- tofu plan
+secretspec run -- tofu apply
 ```
 
 This downloads the TrueNAS installer ISO to the node, creates a q35/OVMF VM

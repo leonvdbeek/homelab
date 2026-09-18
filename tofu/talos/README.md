@@ -14,28 +14,22 @@ adding nodes later) is a small edit.
 
 - `tofu`, plus `bash`, `curl` and `jq` on the machine running it (Tofu POSTs the
   image schematic to the factory at plan time).
-- Proxmox credentials in `../../.env` (gitignored) — this stack reuses the same
-  ones as `tofu/truenas`:
-  ```
-  PROXMOX_VE_ENDPOINT=https://m920x.local.leonvdbeek.com:8006/
-  PROXMOX_VE_USERNAME=root@pam
-  PROXMOX_VE_PASSWORD=...
-  PROXMOX_VE_INSECURE=true
-  ```
-  Unlike `tofu/truenas` this stack does **no** PCI passthrough, so an API token
-  would work too — but the existing `root@pam` login is already in `.env` and is
-  simplest.
+- Proxmox credentials via [secretspec](https://secretspec.dev) — the same
+  `PROXMOX_VE_*` used by `tofu/truenas`, declared in the repo-root
+  `secretspec.toml` and injected by `secretspec run`. The password lives in
+  Bitwarden (`bw` provider); unlock the CLI once per shell:
+  `export BW_SESSION=$(bw unlock --raw)`.
 - A **free** IP on `192.168.4.0/24` for the API VIP (default `192.168.4.60`) —
   `ping` it first. See `cluster_vip` in `variables.tf`.
 
 ## Run
 
 ```sh
+export BW_SESSION=$(bw unlock --raw)   # once per shell
 cd tofu/talos
-set -a; source ../../.env; set +a
 tofu init
-tofu plan
-tofu apply
+secretspec run -- tofu plan
+secretspec run -- tofu apply
 ```
 
 ## What it builds
@@ -77,10 +71,10 @@ with `-var`:
 
 ```sh
 # Give it more room for workloads:
-tofu apply -var 'vm_cpu_cores=6' -var 'vm_memory_mb=8192' -var 'vm_disk_gb=80'
+secretspec run -- tofu apply -var 'vm_cpu_cores=6' -var 'vm_memory_mb=8192' -var 'vm_disk_gb=80'
 
 # Newer Talos, extra extension:
-tofu apply -var 'talos_version=v1.11.0' \
+secretspec run -- tofu apply -var 'talos_version=v1.11.0' \
   -var 'talos_extensions=["siderolabs/qemu-guest-agent","siderolabs/iscsi-tools"]'
 ```
 
@@ -94,4 +88,4 @@ IP — the VIP endpoint and secrets here are already HA-ready.
 ## State
 
 `terraform.tfstate` is written locally and gitignored. It holds the cluster
-secrets and Proxmox credentials — back it up like you would `.env`.
+secrets and the resolved Proxmox credentials — back it up securely.
