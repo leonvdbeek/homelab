@@ -1,162 +1,95 @@
-# homelab
+# Homelab — TrueNAS on m920x
 
-Infrastructure-as-code for a small home Proxmox lab. Lets a fresh bare-metal box go from "plugged into the LAN" to "registered Proxmox node with no-subscription repos and no nag banner" by selecting a single iPXE menu entry.
+Clean-slate rebuild. A single Proxmox host (`m920x`) runs a **TrueNAS
+Community Edition (SCALE)** VM that owns its storage hardware directly via full
+PCIe passthrough.
 
-## Architecture
+## Host
 
-```
-┌───────────────────────────────┐                     ┌──────────────────────┐
-│         UniFi (DHCP)          │   Network Boot:OFF  │   192.168.4.0/24     │
-│        192.168.4.1            │  ─────────────────► │      LAN clients      │
-└────────────────┬──────────────┘                     └──────────┬───────────┘
-                 │                                               │
-                 │            ┌─────────────────────────────┐    │
-                 └────────────► portainer host (192.168.4.73)│◄───┘
-                              │                             │
-                              │  ┌──────────────────────┐   │
-                              │  │   netboot.xyz        │   │  TFTP+proxyDHCP
-                              │  │   ─ TFTP/UDP 69      │   │  arch detection
-                              │  │   ─ proxyDHCP/UDP 67 │   │  serves iPXE
-                              │  │   ─ http :8181       │   │  + assets
-                              │  └──────────────────────┘   │
-                              │  ┌──────────────────────┐   │
-                              │  │   autopve :8282      │   │  per-MAC answer.toml
-                              │  │   ─ /answer (POST)   │   │  + post-install webhook
-                              │  │   ─ /playbook/<n>    │   │  → Ansible
-                              │  │   ─ /files/<n>       │   │  first-boot script host
-                              │  └──────────────────────┘   │
-                              │  ┌──────────────────────┐   │
-                              │  │   NetBox :8484       │   │  device registry
-                              │  │   ─ Postgres + Redis │   │
-                              │  └──────────────────────┘   │
-                              └─────────────────────────────┘
-```
+| | |
+|---|---|
+| Node | `m920x` (`m920x.local.leonvdbeek.com`) |
+| Platform | Proxmox VE 9.1, kernel 6.17, Intel i7-8700, 15 GiB RAM, UEFI + GRUB |
 
-**Boot flow**
-```
-PXE firmware → proxyDHCP → arch-correct netboot.xyz iPXE binary
-            → iPXE local menu (TFTP from .73)
-            → "Proxmox VE 9.1 (auto-install)"
-            → kernel + initrd + ISO (HTTP from :8181)
-            → installer fetches answer.toml POST→ autopve :8282
-            → autopve matches by MAC, returns answer with right FQDN
-            → unattended install
-            → first-boot script (autopve :8282/files/setup-pve.sh):
-                  · disable enterprise repo
-                  · enable pve-no-subscription
-                  · patch nag banner
-            → post-install webhook → autopve :8282/playbook/register-netbox
-                  · SSH back to host, gather facts
-                  · push device + interfaces + MACs + IP + disks to NetBox
-```
+## What gets passed through
 
-## Repo layout
+Both devices already sit alone in their own IOMMU group, so **no ACS-override
+hack is needed**.
+
+| Device | PCI addr | IDs | IOMMU group |
+|---|---|---|---|
+| Crucial P1 1TB NVMe | `0000:03:00.0` | `c0a9:2263` | 13 (isolated) |
+| ASMedia **ASM1064** SATA controller | `0000:02:00.0` | `1b21:1064` | 12 (isolated) |
+
+> Note: the SATA controller is physically an **ASM1064**, not ASM1664 — it's
+> passed through by its real PCI ID above. The NVMe becomes TrueNAS's ZFS pool;
+> any disks on the SATA controller appear directly in TrueNAS.
+
+## Layout
 
 ```
-stacks/
-  netbootxyz/   docker-compose for the netboot.xyz container (proxyDHCP + TFTP + nginx)
-  autopve/      docker-compose + thin Dockerfile (adds pynetbox + sshpass)
-  netbox/       docker-compose.override (port + superuser bootstrap)
-ipxe/           iPXE menu additions + autoexec.ipxe served by netboot.xyz
-ansible/        playbooks autopve runs on post-install webhook
-files/          first-boot scripts served by autopve at /files/<name>
-tofu/           OpenTofu — Talos VMs + Kubernetes cluster on top of Proxmox
-kubernetes/     in-cluster manifests (Helm values, Kustomize) Tofu and humans apply
-docs/           runbook-style notes
-.env.example    env vars consumed by playbooks (NETBOX_TOKEN etc.)
+ansible/pve-passthrough/   host prep: enable IOMMU + vfio (run once)
+tofu/truenas/              the TrueNAS VM (OpenTofu, bpg/proxmox)
 ```
 
-The Proxmox-side automation (`stacks/`, `ipxe/`, `ansible/`) gets bare metal
-to "Proxmox node ready." The cluster layer (`tofu/`, `kubernetes/`) builds
-a Talos Kubernetes cluster on top of those nodes and wires up
-proxmox-csi-plugin so PVCs land on `ceph-pool`. See `tofu/README.md` for
-the cluster overview.
+## 1. Prepare the host (once)
 
-## One-time setup
+Adds `intel_iommu=on iommu=pt` to the kernel cmdline and loads the vfio modules.
+This is part of the idempotent base runbook (`ansible/site.yml`); run it alone
+with the passthrough playbook. A reboot is needed the first time the cmdline
+changes — opt in with `-e pve_allow_reboot=true`.
 
-1. Clone this repo on the Docker host (`portainer` in the layout above).
-2. Create persistent directories:
-   ```
-   mkdir -p ~/portainer/netboot/{config,assets} \
-            ~/portainer/autopve/{data,logs} \
-            ~/portainer/netbox
-   ```
-3. Copy `.env.example` to `.env`, fill in real values.
-4. Copy each `*.example` file to its real name and edit the placeholders:
-   - `stacks/autopve/storage-general.json.example` → `stacks/autopve/storage-general.json` (drop into `~/portainer/autopve/data/`)
-   - `stacks/netbox/docker-compose.override.yml.example` → `stacks/netbox/docker-compose.override.yml`
-5. `cd stacks/netbootxyz && docker compose up -d` — wait for menus to download (~30s on first start).
-6. `cd stacks/autopve && docker compose up -d --build`
-7. `cd stacks/netbox && docker compose up -d` — first start runs DB migrations (~3 min).
-8. Provision NetBox:
-   - `curl -X POST -d '{"username":"admin","password":"$NETBOX_SUPERUSER_PASSWORD"}' http://<host>:8484/api/users/tokens/provision/` — capture `token` (and `key`) for `NETBOX_TOKEN=nbt_<key>.<token>` in `.env`.
-   - Seed Site/Role/CustomFields (see `docs/netbox-seed.md`).
-9. UniFi → Networks → DHCP → Network Boot **OFF**. proxyDHCP from netboot.xyz handles it.
-
-## Provisioning a new machine
-
-1. **Decide the hostname.** Add it to autopve's `storage-general.json` (or via the UI):
-   ```jsonc
-   "lenovo-04": {
-     "must_contain": ["aa:bb:cc:dd:ee:ff"],   // lowercase MAC of the new box
-     "global": { "fqdn": "lenovo-04.local.leonvdbeek.com" }
-   }
-   ```
-   `docker restart autopve` to reload.
-
-2. **Boot the box** via PXE (F12 / firmware boot menu → network boot).
-3. iPXE menu loads → pick **Proxmox VE 9.1 (auto-install)**.
-4. Walk away — install + first-boot + NetBox registration are unattended.
-5. When the box reboots, it has:
-   - Hostname `lenovo-04.local.leonvdbeek.com`
-   - Repos pointing at `pve-no-subscription` (no enterprise 401s)
-   - No subscription nag in the web UI
-   - A device entry in NetBox with manufacturer, model, S/N, CPU, RAM, BIOS, NICs, MACs, primary IP, disks
-
-## Customizing the install
-
-- **Different disk** — set `disk-list` in the per-host or Default answer.
-- **Static network** — `[network] source = "from-answer"` + `cidr/gateway/dns` block in the answer.
-- **Different first-boot script** — replace `files/setup-pve.sh` and `docker restart autopve`.
-- **Different post-install action** — drop a new playbook under `ansible/playbooks/<name>/` and point the answer's `[post-installation-webhook] url` at `http://<host>:8282/playbook/<name>`.
-
-## Adding a tool the autopve image doesn't ship
-
-Edit `stacks/autopve/Dockerfile` (`apt-get install …` or `pip install …`), then `docker compose up -d --build` from `stacks/autopve/`. Use `--pull` to also refresh the upstream base.
-
-## Troubleshooting
-
-- **iPXE prompts for `p` and times out** — proxyDHCP detected but iPXE didn't see itself. Check `dhcp-userclass=set:ipxe,iPXE` in `TFTPD_OPTS`.
-- **`autoexec.ipxe... Permission denied`** — file in `/config/menus/` isn't owned by `nbxyz`. `docker exec netbootxyz chown -R nbxyz:nbxyz /config/menus`.
-- **`failed loading first-boot executable from ISO`** — your answer has `[first-boot] source = "from-iso"` but the ISO wasn't prepared with `--on-first-boot=...`. Either remove the section, switch to `source = "from-url"`, or rebuild the ISO with the script embedded.
-- **NetBox returns `Invalid v1 token`** — the v2 token format is `Bearer nbt_<key>.<token>` (Bearer, not Token). Provision via `/api/users/tokens/provision/`.
-- **Post-install playbook fails on `pynetbox` not found** — autopve image was upgraded and lost the extras. `docker compose up -d --build` from `stacks/autopve/`.
-
-## Security note
-
-This setup assumes a trusted LAN. Plain HTTP for the answer file means the root password is on the wire during install. For anything internet-exposed, use HTTPS with cert pinning (`proxmox-auto-install-assistant prepare-iso ... --cert-fingerprint`).
-
-## Standalone runbook (refresh data on demand)
-
-The autopve flow registers each host once on first install. To re-pull live facts on demand (after a hardware change, periodically, etc.) there's a separate playbook driven from a static inventory.
-
-```
+```sh
 cd ansible
-ansible-galaxy collection install -r requirements.yml          # one-time
-
-# Load secrets from the gitignored .env at the repo root
-set -a; source ../.env; set +a
-
-ansible-playbook playbooks/site.yml                            # all hosts
-ansible-playbook playbooks/site.yml -l lenovo-02               # one host
-ansible-playbook playbooks/site.yml --tags netbox              # one task slice
+ansible-playbook playbooks/pve-passthrough.yml -e pve_allow_reboot=true
 ```
 
-Inventory lives in `ansible/inventory/`:
-- `hosts.yml` — group memberships
-- `host_vars/<name>.yml` — per-host IP
+After it reboots, sanity-check on the host:
 
-Add a new host: drop a `host_vars/<name>.yml` with the IP and add the name under `pve_hosts:` in `hosts.yml`. Then add a matching MAC-keyed entry in autopve's storage so the install side picks the right FQDN.
+```sh
+ssh root@m920x.local.leonvdbeek.com \
+  'dmesg | grep -e DMAR -e IOMMU | head; lspci -nnk -s 02:00.0; lspci -nnk -s 03:00.0'
+```
 
-The work itself lives in the `base` role (`ansible/roles/base/`). It's composed of independently-idempotent task files (currently only `netbox-register.yml`). Add new task files there and import them from `roles/base/tasks/main.yml` to grow the role.
+## 2. Create the VM
 
+Proxmox credentials come from the environment (`PROXMOX_VE_*` in `.env`).
+
+> **Auth must be `root@pam` password login, not an API token.** Proxmox refuses
+> two things for token auth, both of which this VM needs: raw PCI passthrough
+> and the `args:` QEMU option. So `.env` sets `PROXMOX_VE_USERNAME=root@pam` +
+> `PROXMOX_VE_PASSWORD=...` — fill in the real root password before applying.
+
+```sh
+# from the repo root, load your proxmox creds:
+set -a; source .env; set +a
+
+cd tofu/truenas
+tofu init
+tofu plan
+tofu apply
+```
+
+This downloads the TrueNAS installer ISO to the node, creates a q35/OVMF VM
+with a 32 GiB boot disk, and attaches both PCI devices. Open the VM console in
+the Proxmox UI to run the TrueNAS installer (install onto the small boot disk —
+`sdX`/`vdX`, **not** the passed-through NVMe).
+
+### NVMe MSI-X quirk
+
+The Crucial P1 (DRAM-less) packs its MSI-X table and PBA into one BAR, which
+QEMU can't map for VFIO (`table & pba overlap`). The VM works around it with
+`kvm_arguments = "-set device.hostpci0.x-msix-relocation=bar2"`, relocating
+MSI-X to a free BAR. This is why root login is required (`args:` is root-only).
+
+### Defaults (override in `terraform.tfvars`)
+
+| Variable | Default | |
+|---|---|---|
+| `vm_id` | `100` | |
+| `vm_cpu_cores` | `4` | of 12 host threads |
+| `vm_memory_mb` | `8192` | TrueNAS floor; host has 15 GiB total |
+| `boot_disk_gb` | `32` | on `local-lvm` |
+| `truenas_iso_url` | 25.10.6 (Goldeye) | bump for newer releases |
+
+Copy `terraform.tfvars.example` → `terraform.tfvars` to change any of these.

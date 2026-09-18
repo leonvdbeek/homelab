@@ -14,13 +14,5 @@ terraform {
       source  = "siderolabs/talos"
       version = "~> 0.7"
     }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.30"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.13"
-    }
   }
 }

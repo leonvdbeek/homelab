@@ -1,16 +1,19 @@
-output "vms" {
-  description = "Created Talos VMs and their Proxmox node placement."
+output "vm" {
+  description = "The Talos control-plane VM."
   value = {
-    for name, vm in proxmox_virtual_environment_vm.talos : name => {
-      vm_id = vm.vm_id
-      node  = vm.node_name
-      ip    = local.vm_ips[name]
-    }
+    vm_id = proxmox_virtual_environment_vm.talos.vm_id
+    node  = proxmox_virtual_environment_vm.talos.node_name
+    ip    = local.vm_ip
   }
 }
 
+output "cluster_endpoint" {
+  description = "Kubernetes API endpoint (the VIP)."
+  value       = "https://${var.cluster_vip}:6443"
+}
+
 output "talos_iso" {
-  description = "Talos ISO downloaded to each node."
+  description = "Talos ISO downloaded to the node."
   value       = local.talos_iso_filename
 }
 
@@ -25,4 +28,3 @@ output "talosconfig" {
   value       = data.talos_client_configuration.this.talos_config
   sensitive   = true
 }
-

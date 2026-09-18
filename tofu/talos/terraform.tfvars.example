@@ -1,5 +1,26 @@
-# Override any of the defaults from variables.tf. Most homelabs won't need to.
-# proxmox_nodes  = ["lenovo-01", "lenovo-02", "lenovo-03"]
-# talos_version  = "v1.9.5"
-# disk_datastore = "ceph-pool"
-# network_bridge = "vmbr0"
+# Copy to terraform.tfvars and adjust as needed. All values have working
+# defaults for the m920x host; override only what differs.
+
+# node_name = "m920x"
+
+# --- Cluster ---
+# cluster_vip must be a FREE IP on 192.168.4.0/24 (not the host .54, TrueNAS
+# .111, or mgmt .164). Ping it first.
+# cluster_vip  = "192.168.4.60"
+# cluster_name = "homelab"
+
+# Bump when a newer Talos release is out (https://github.com/siderolabs/talos/releases):
+# talos_version = "v1.10.4"
+
+# Add more baked-in extensions (https://factory.talos.dev/extensions):
+# talos_extensions = ["siderolabs/qemu-guest-agent", "siderolabs/iscsi-tools"]
+
+# --- Resources (bump and re-apply to resize) ---
+# The host has 15 GiB RAM and the TrueNAS VM pins 8 GiB. 4 GiB is the safe
+# default; raise vm_memory_mb only if you also free up RAM elsewhere.
+# vm_cpu_cores = 4
+# vm_memory_mb = 4096
+# vm_disk_gb   = 40
+
+# vm_id   = 9000
+# vm_name = "talos-cp-01"

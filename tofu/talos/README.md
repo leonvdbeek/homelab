@@ -1,124 +1,97 @@
 # tofu/talos
 
-3-node Talos cluster on Proxmox. One VM per node, 20 GB disk on `ceph-pool`,
-DHCP on `vmbr0`, no VLAN. The Talos ISO is downloaded by Tofu to each node's
-`local` storage.
+A single-node Talos Kubernetes cluster on the `m920x` Proxmox host: one
+control-plane VM that also runs workloads (`allowSchedulingOnControlPlanes`),
+with the `qemu-guest-agent` extension baked in. The Talos ISO is built by the
+Talos Image Factory and downloaded to the node by Tofu.
 
-## One-time
+It is deliberately minimal — default Talos CNI (Flannel) and `kube-proxy`, no
+Ceph/CSI/Cilium — so `tofu apply` gives a working cluster with no manual helm
+steps. Everything is variable-driven, so growing the VM's CPU/RAM/disk (or
+adding nodes later) is a small edit.
 
-1. **Create a Proxmox API token.**
-   Datacenter → Permissions → API Tokens → Add. Untick *Privilege Separation*
-   (or grant the token a role with `VM.*`, `Datastore.AllocateSpace`,
-   `Datastore.Audit`, `Sys.Audit`, `Sys.Modify` across `/`). Copy the resulting
-   token string in the form `user@realm!tokenid=uuid` — you'll only see it once.
+## Prerequisites
 
-2. **Add Proxmox vars to `../../.env`** (gitignored). See `.env.example`:
-   ```
-   PROXMOX_VE_ENDPOINT=https://<pve-host-or-vip>:8006/
-   PROXMOX_VE_API_TOKEN=root@pam!tofu=00000000-0000-0000-0000-000000000000
-   PROXMOX_VE_INSECURE=true
+- `tofu`, plus `bash`, `curl` and `jq` on the machine running it (Tofu POSTs the
+  image schematic to the factory at plan time).
+- Proxmox credentials in `../../.env` (gitignored) — this stack reuses the same
+  ones as `tofu/truenas`:
+  ```
+  PROXMOX_VE_ENDPOINT=https://m920x.local.leonvdbeek.com:8006/
+  PROXMOX_VE_USERNAME=root@pam
+  PROXMOX_VE_PASSWORD=...
+  PROXMOX_VE_INSECURE=true
+  ```
+  Unlike `tofu/truenas` this stack does **no** PCI passthrough, so an API token
+  would work too — but the existing `root@pam` login is already in `.env` and is
+  simplest.
+- A **free** IP on `192.168.4.0/24` for the API VIP (default `192.168.4.60`) —
+  `ping` it first. See `cluster_vip` in `variables.tf`.
 
-   # Mirror for tofu — the CSI helm release reads this.
-   TF_VAR_proxmox_endpoint=${PROXMOX_VE_ENDPOINT}
-   ```
+## Run
 
-3. **Source it and run Tofu:**
-   ```
-   cd tofu/talos
-   set -a; source ../../.env; set +a
-   tofu init
-   tofu plan
-   tofu apply
-   ```
+```sh
+cd tofu/talos
+set -a; source ../../.env; set +a
+tofu init
+tofu plan
+tofu apply
+```
 
 ## What it builds
 
-- Posts a schematic to the [Talos Image Factory](https://factory.talos.dev) at
-  plan time and downloads the resulting customized `metal-amd64.iso` onto
-  `local` of each node. The default schematic bakes in the
-  `siderolabs/qemu-guest-agent` extension. Edit `talos_extensions` in
-  `variables.tf` to add more (full list:
-  https://factory.talos.dev/extensions). Requires `bash`, `curl`, and `jq`
-  on the machine running Tofu.
-- Creates 3 VMs (`talos-01`..`talos-03`, IDs 9001..9003), one per node, with:
-  - 4 vCPU (`x86-64-v2-AES`), 4 GB RAM
-  - 20 GB scsi disk on `ceph-pool` (virtio-scsi, discard, ssd flag)
-  - virtio NIC on `vmbr0`, untagged, DHCP
-  - boot order `scsi0, ide3` so first boot falls through to ISO; subsequent
-    boots come from the installed disk
+1. Posts a schematic (default extension: `siderolabs/qemu-guest-agent`) to
+   [factory.talos.dev](https://factory.talos.dev) and downloads the resulting
+   `metal-amd64.iso` onto the node's `local` storage.
+2. Creates VM `talos-cp-01` (ID 9000) on `m920x`:
+   - 4 vCPU (`host`), 4 GiB RAM, 40 GiB disk on `local-lvm`
+   - virtio-scsi disk, virtio NIC on `vmbr0` (untagged, DHCP)
+   - boot order `scsi0, ide3` — falls through to the ISO on first boot, boots
+     the installed disk after
+   - `onboot`, qemu-guest-agent enabled
+3. Generates cluster secrets and a control-plane machine config, then over the
+   Talos maintenance API:
+   - pins the hostname to `talos-cp-01` (so the K8s node name matches the VM),
+   - declares the API **VIP** on the NIC — a stable API address despite DHCP,
+     and real HA if control-plane nodes are added later,
+   - sets `allowSchedulingOnControlPlanes: true` so the node runs workloads.
+4. Bootstraps etcd, waits for cluster health, and exposes `kubeconfig` /
+   `talosconfig` as sensitive outputs.
 
-After the VMs are up, Tofu also:
-- generates cluster secrets and a controlplane machine config
-  (compact 3-node cluster — `allowSchedulingOnControlPlanes: true`, install
-  disk `/dev/sda`),
-- applies the config to all 3 VMs over the Talos maintenance API, with
-  per-node patches that:
-  - set `machine.network.hostname` to the Proxmox VM name (`talos-01`..`03`),
-    so the K8s node name matches the Proxmox VM name and the CSI plugin's
-    "look up VM by node name" fallback resolves,
-  - set `topology.kubernetes.io/region` and
-    `topology.kubernetes.io/zone=<proxmox node>` for CSI placement,
-- bootstraps etcd on the first node,
-- waits for cluster health,
-- pulls `kubeconfig` and `talosconfig` and exposes them as sensitive outputs.
+The VM IP comes from the qemu-guest-agent; the kube-API endpoint is the VIP.
 
-VM IPs come from the qemu-guest-agent (running because the schematic includes
-the `siderolabs/qemu-guest-agent` extension). The cluster API endpoint is the
-first CP node's IP — drop in a VIP later for HA on the API.
+## After apply
 
-After `tofu apply`:
-```
+```sh
 mkdir -p ~/.kube ~/.talos
 tofu output -raw kubeconfig  > ~/.kube/config
 tofu output -raw talosconfig > ~/.talos/config
 kubectl get nodes
 talosctl health
-kubectl apply -k ../../kubernetes/csi-test     # smoke-test the CSI driver
 ```
 
-## Storage: proxmox-csi-plugin
+## Adjusting / extending
 
-Tofu drives the whole CSI install end-to-end:
+Everything is in `variables.tf`. Override in `terraform.tfvars` (gitignored) or
+with `-var`:
 
-- Proxmox side: `Kubernetes-CSI` role, `kubernetes-csi@pve` user, API
-  token, ACLs (bpg provider).
-- Per-node Talos config patches:
-  `topology.kubernetes.io/region=<cluster_name>` and
-  `topology.kubernetes.io/zone=<proxmox node>` so the plugin knows
-  which Proxmox node a PVC's disk should be allocated on.
-- `csi-proxmox` namespace (`privileged` PSA) with a `proxmox-csi-plugin`
-  Secret carrying the rendered `config.yaml`.
-- The Helm chart itself —
-  `oci://ghcr.io/sergelogvinov/charts/proxmox-csi-plugin@0.5.7` — with
-  values loaded from `../../kubernetes/proxmox-csi/values.yaml`.
+```sh
+# Give it more room for workloads:
+tofu apply -var 'vm_cpu_cores=6' -var 'vm_memory_mb=8192' -var 'vm_disk_gb=80'
 
-The values file is plain YAML so it's readable, diffable, and
-GitOps-ready. Edit it, run `tofu apply`.
-
-The smoke test (`../../kubernetes/csi-test/`) is plain Kustomize —
-applied with `kubectl apply -k` after the cluster is up. It's a
-workload, not infra, so it stays out of Tofu.
-
-The Proxmox API token in your `.env` needs enough privileges to manage
-roles/users/ACLs on Proxmox; easiest is a token without privilege
-separation.
-
-### Future work: Proxmox CCM
-
-We don't run a cloud-controller-manager today, so K8s nodes have no
-`spec.providerID`. The CSI plugin compensates by matching K8s node name
-→ Proxmox VM name (which is why the hostname patch above exists).
-Installing the [Proxmox CCM](https://github.com/sergelogvinov/proxmox-cloud-controller-manager)
-removes that coupling — providerID becomes the canonical link, the
-hostname is free to be anything, and replacing a VM no longer requires
-keeping the name in sync.
-
-## Adjusting
-
-Everything is variable-driven in `variables.tf`. Override in
-`terraform.tfvars` (gitignored by the root `.gitignore` if added) or with
-`-var`:
-
+# Newer Talos, extra extension:
+tofu apply -var 'talos_version=v1.11.0' \
+  -var 'talos_extensions=["siderolabs/qemu-guest-agent","siderolabs/iscsi-tools"]'
 ```
-tofu apply -var 'talos_version=v1.10.0' -var 'vm_disk_gb=40'
-```
+
+> **RAM budget:** the host has 15 GiB and the TrueNAS VM pins 8 GiB, so keep
+> `vm_memory_mb` around 4 GiB unless you free up RAM elsewhere.
+
+Adding worker nodes later: add a `workers.tf` with a `for_each` VM resource and
+a `worker` machine config (`machine_type = "worker"`), applied to each worker's
+IP — the VIP endpoint and secrets here are already HA-ready.
+
+## State
+
+`terraform.tfstate` is written locally and gitignored. It holds the cluster
+secrets and Proxmox credentials — back it up like you would `.env`.

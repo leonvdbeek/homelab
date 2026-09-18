@@ -1,0 +1,86 @@
+---
+# Prepares the Proxmox host for PCIe passthrough into the TrueNAS VM.
+#
+# What this does:
+#   * Adds `intel_iommu=on iommu=pt` to the kernel command line (GRUB).
+#   * Loads the vfio kernel modules at boot.
+#   * Requests a reboot if anything changed — but only actually reboots when
+#     `pve_allow_reboot=true` (default false), so re-running as part of the
+#     base runbook never reboots the host unexpectedly. When a change needs a
+#     reboot and it isn't allowed, it prints a "reboot pending" notice instead.
+#
+# Idempotent: on an already-configured host nothing changes and no reboot is
+# requested.
+#
+# Context for m920x (checked 2026-08-20):
+#   * Intel i7-8700, PVE 9.1 / kernel 6.17 — boots via GRUB (UEFI), NOT
+#     systemd-boot/proxmox-boot-tool, so we edit /etc/default/grub.
+#   * The two passthrough targets each already sit alone in their own IOMMU
+#     group, so NO ACS-override hack is needed:
+#       - group 13: 0000:03:00.0  Crucial P1 1TB NVMe   [c0a9:2263]
+#       - group 12: 0000:02:00.0  ASMedia ASM1064 SATA  [1b21:1064]
+#   * Kernel 6.17 turns on the Intel IOMMU by default, but we still pin
+#     `intel_iommu=on iommu=pt` so the config is explicit and survives kernel
+#     default changes.
+- name: Enable IOMMU + vfio for PCIe passthrough
+  hosts: proxmox
+  become: false  # already root
+  gather_facts: false
+
+  tasks:
+    - name: Fail early if this host is not GRUB-based
+      ansible.builtin.stat:
+        path: /etc/default/grub
+      register: grub_cfg
+
+    - name: Assert GRUB is present
+      ansible.builtin.assert:
+        that: grub_cfg.stat.exists
+        fail_msg: >-
+          /etc/default/grub not found — this host likely boots via
+          systemd-boot/proxmox-boot-tool. Adjust the cmdline via
+          `proxmox-boot-tool` instead of this playbook.
+
+    - name: Ensure IOMMU flags on the kernel command line
+      ansible.builtin.replace:
+        path: /etc/default/grub
+        # Negative lookahead => only appends when the flag is not already there (idempotent).
+        regexp: '^(GRUB_CMDLINE_LINUX_DEFAULT="(?![^"]*{{ item }})[^"]*)"'
+        replace: '\1 {{ item }}"'
+      loop:
+        - intel_iommu=on
+        - iommu=pt
+      notify:
+        - update grub
+        - reboot host
+        - note reboot pending
+
+    - name: Load vfio modules at boot
+      ansible.builtin.copy:
+        dest: /etc/modules-load.d/vfio.conf
+        mode: "0644"
+        content: |
+          vfio
+          vfio_iommu_type1
+          vfio_pci
+      notify:
+        - reboot host
+        - note reboot pending
+
+  handlers:
+    - name: update grub
+      ansible.builtin.command: update-grub
+      changed_when: true
+
+    - name: reboot host
+      ansible.builtin.reboot:
+        reboot_timeout: 600
+      when: pve_allow_reboot | bool
+
+    - name: note reboot pending
+      ansible.builtin.debug:
+        msg: >-
+          Kernel cmdline / vfio config changed but pve_allow_reboot is false —
+          reboot the host manually, or re-run with `-e pve_allow_reboot=true`,
+          to apply.
+      when: not (pve_allow_reboot | bool)

@@ -10,7 +10,8 @@ locals {
 
 # POST the schematic to the Talos Image Factory; it returns a deterministic
 # schematic ID we use to fetch the matching customized ISO. The ID is stable
-# for a given schematic, so re-plans hit the same URL.
+# for a given schematic, so re-plans hit the same URL. Needs bash, curl and jq
+# on the machine running Tofu.
 data "external" "talos_schematic" {
   program = ["bash", "-c", "jq -r .yaml | curl -fsS -X POST --data-binary @- https://factory.talos.dev/schematics"]
   query   = { yaml = local.talos_schematic_yaml }
@@ -22,14 +23,11 @@ locals {
   talos_iso_filename = "talos-${var.talos_version}-${var.talos_arch}-${substr(local.talos_schematic_id, 0, 12)}.iso"
 }
 
-# Download the customized Talos ISO once per node so each VM can boot from
-# local storage.
+# Download the customized Talos ISO onto the node so the VM can boot from it.
 resource "proxmox_download_file" "talos" {
-  for_each = toset(var.proxmox_nodes)
-
   content_type = "iso"
   datastore_id = var.iso_datastore
-  node_name    = each.value
+  node_name    = var.node_name
   url          = local.talos_iso_url
   file_name    = local.talos_iso_filename
   overwrite    = false
