@@ -2,6 +2,10 @@
 .DS_Store
 *.bak
 
+# Ansible run logs can capture secrets a task prints (a wildcard TLS key once
+# leaked this way) — never commit them.
+ansible/*.log
+
 # OpenTofu / Terraform — track .terraform.lock.hcl, ignore caches and state.
 **/.terraform/
 *.tfstate
