@@ -1,0 +1,47 @@
+# TrueNAS CSI (official truenas/truenas-csi) — iSCSI PVs on the `fast` pool.
+#
+# Install (chart sourced from github.com/truenas/truenas-csi):
+#   helm install truenas-csi charts/truenas-csi \
+#     -n truenas-csi --create-namespace -f values.yaml
+# Prereq: Secret `truenas-csi-api-key` (key `api-key`) in ns `truenas-csi`
+# holding the TrueNAS API key (NOT committed — provision via secretspec).
+
+truenas:
+  # TrueNAS API WebSocket endpoint (self-signed TLS -> skip verify)
+  url: "wss://192.168.4.111"
+  insecureSkipTLS: true
+  defaultPool: "fast"
+  iscsiPortal: "192.168.4.111:3260"
+  nvmeofPortal: "192.168.4.111:4420"
+  iscsiIQNBase: "iqn.2005-10.org.freenas.ctl"
+  # API key read from a Secret we manage (kept out of git)
+  existingSecret: "truenas-csi-api-key"
+  existingSecretKey: "api-key"
+
+namespace:
+  create: false
+
+driverName: csi.truenas.io
+
+storageClasses:
+  - name: truenas-nvmeof-fast
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeBindingMode: WaitForFirstConsumer
+    parameters:
+      protocol: "nvmeof"
+      pool: "fast"
+      datasetPath: "k8s/nvmeof"
+      compression: "LZ4"
+      volblocksize: "16K"
+  - name: truenas-iscsi-fast
+    isDefault: true
+    reclaimPolicy: Delete
+    allowVolumeExpansion: true
+    volumeBindingMode: WaitForFirstConsumer
+    parameters:
+      protocol: "iscsi"
+      pool: "fast"
+      datasetPath: "k8s/iscsi"
+      compression: "LZ4"
+      volblocksize: "16K"
