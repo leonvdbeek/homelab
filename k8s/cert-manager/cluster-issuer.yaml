@@ -10,13 +10,12 @@ spec:
     email: leon.vandebeek@xs4all.nl
     privateKeySecretRef:
       name: letsencrypt-account-key
-    dns01:
-      # Check TXT propagation via public resolvers (cluster CoreDNS doesn't
-      # resolve the challenge reliably on this homelab).
-      recursiveNameservers: ["1.1.1.1:53", "8.8.8.8:53"]
-      recursiveNameserversOnly: true
     solvers:
       - dns01:
+          # Check TXT propagation via public resolvers (cluster CoreDNS doesn't
+          # resolve the challenge reliably on this homelab).
+          recursiveNameservers: ["1.1.1.1:53", "8.8.8.8:53"]
+          recursiveNameserversOnly: true
           cloudflare:
             # Scoped API token (from the UniFi DDNS config) with Zone.DNS:Edit.
             # The global CF API key stores but does NOT publish challenge TXTs on
