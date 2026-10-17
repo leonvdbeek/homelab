@@ -1,0 +1,24 @@
+# RBAC for the traefik service account to watch k8s providers.
+# Ingress controllers need cluster-wide read/watch access by design (equivalent
+# to the ClusterRole the official traefik chart ships).
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: traefik
+rules:
+  - apiGroups: [ "*" ]
+    resources: [ "*" ]
+    verbs: [ "get", "list", "watch" ]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: traefik
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: traefik
+subjects:
+  - kind: ServiceAccount
+    name: default
+    namespace: traefik
