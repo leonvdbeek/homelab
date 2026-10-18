@@ -1,0 +1,23 @@
+# Let's Encrypt ClusterIssuer using Cloudflare DNS-01.
+# Reuses the Cloudflare API token (scoped, Zone.DNS:Edit) from the UniFi DDNS
+# config — stored in the secret `cloudflare-api-token` (key `api-token`, ns
+# cert-manager), value sourced from Vault (secret/homelab/cloudflare.ddns_api_token).
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+spec:
+  acme:
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: leon.vandebeek@xs4all.nl
+    privateKeySecretRef:
+      name: letsencrypt-account-key
+    solvers:
+      - dns01:
+          cloudflare:
+            # Scoped API token with Zone.DNS:Edit. The global CF API key (and the
+            # earlier invalid recursiveNameservers field) were red herrings — this
+            # token publishes challenge TXTs within seconds.
+            apiTokenSecretRef:
+              name: cloudflare-api-token
+              key: api-token
