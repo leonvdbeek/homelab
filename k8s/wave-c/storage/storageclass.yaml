@@ -1,0 +1,15 @@
+# odysseus SMB (csi-driver-smb). Stash media = Pictures share / Video/Unsorted.
+# DSM 6.2 DS412+ -> encrypted folders are NOT NFS-exportable, so SMB (as .73 used).
+# cluster-svc (uid 1033) = read-only SMB user on Pictures.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata: {name: odysseus-smb}
+provisioner: smb.csi.k8s.io
+parameters:
+  source: //192.168.4.200/Pictures
+  subDir: "Video/Unsorted"
+  csi.storage.k8s.io/provisioner-secret-name: smb-creds
+  csi.storage.k8s.io/provisioner-secret-namespace: apps
+  csi.storage.k8s.io/node-stage-secret-name: smb-creds
+  csi.storage.k8s.io/node-stage-secret-namespace: apps
+mountOptions: [vers=3.1.1, dir_mode=0755, file_mode=0755]
