@@ -1,0 +1,29 @@
+# node_exporter DaemonSet — host metrics on every node, port 9100.
+# Runs in the privileged 'monitoring' ns (hostPath / + hostNetwork/hostPID).
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: node-exporter
+  namespace: monitoring
+spec:
+  selector: {matchLabels: {job: node-exporter}}
+  template:
+    metadata: {labels: {job: node-exporter}}
+    spec:
+      hostNetwork: true
+      hostPID: true
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: node-exporter
+          image: quay.io/prometheus/node-exporter:latest
+          args:
+            - --path.rootfs=/host
+            - --path.procfs=/host/proc
+            - --path.sysfs=/host/sys
+          ports: [{name: metrics, containerPort: 9100, hostPort: 9100}]
+          volumeMounts:
+            - {name: root, mountPath: /host, readOnly: true, mountPropagation: HostToContainer}
+      volumes:
+        - name: root
+          hostPath: {path: /}  # violates baseline -> ns must be privileged; see ability

@@ -1,0 +1,11 @@
+# Wave B — observability (node_exporter, beszel, prometheus, grafana).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - node-exporter/node-exporter.yaml
+  - beszel/beszel.yaml
+  - prometheus/configmap.yaml
+  - prometheus/prometheus.yaml
+  - grafana/provisioning-configmap.yaml
+  - grafana/grafana.yaml

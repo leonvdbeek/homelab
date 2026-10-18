@@ -1,0 +1,41 @@
+# beszel server — metrics dashboard; data migrated from .73 (/home/leon/portainer/beszel).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: beszel-data
+  namespace: monitoring
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 2Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beszel
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: beszel}}
+  template:
+    metadata: {labels: {app: beszel}}
+    spec:
+      containers:
+        - name: beszel
+          image: henrygd/beszel:latest
+          ports: [{name: http, containerPort: 8090}]
+          volumeMounts:
+            - {name: data, mountPath: /beszel_data}
+          readinessProbe: {httpGet: {path: /, port: 8090}, initialDelaySeconds: 5}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: beszel-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beszel
+  namespace: monitoring
+spec:
+  selector: {app: beszel}
+  ports: [{name: http, port: 8090, targetPort: 8090}]
