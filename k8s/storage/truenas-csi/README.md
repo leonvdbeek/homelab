@@ -14,6 +14,12 @@ helm install truenas-csi charts/truenas-csi \
   -n truenas-csi --create-namespace -f values.yaml
 ```
 
+## iSCSI port (important)
+The TrueNAS iSCSI listener runs on **3261**, NOT the standard 3260: `proxmox-nvme`
+(NVMe-oF) already owns 192.168.4.111:3260, so iSCSI was moved to 3261 to avoid the
+serverside port collision. Keep the driver's `iscsiPortal` and the TrueNAS iSCSI
+`listen_port` in agreement.
+
 ## StorageClass
 `truenas-iscsi-fast` (default) — iSCSI on pool `fast`, thin zvols under
 `fast/k8s/iscsi/<pvc>`, LZ4, expandable. WaitForFirstConsumer.

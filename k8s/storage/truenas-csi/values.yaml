@@ -11,7 +11,7 @@ truenas:
   url: "wss://192.168.4.111"
   insecureSkipTLS: true
   defaultPool: "fast"
-  iscsiPortal: "192.168.4.111:3260"
+  iscsiPortal: "192.168.4.111:3261"
   nvmeofPortal: "192.168.4.111:4420"
   iscsiIQNBase: "iqn.2005-10.org.freenas.ctl"
   # API key read from a Secret we manage (kept out of git)
