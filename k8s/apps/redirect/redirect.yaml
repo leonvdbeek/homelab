@@ -11,7 +11,7 @@ metadata: {name: https-redirect, namespace: apps}
 spec:
   entryPoints: [web]
   routes:
-    - match: HostRegexp(`{host:.+}`)
+    - match: PathPrefix(`/`)
       kind: Rule
       middlewares: [{name: redirect-https}]
       services: [{name: website, port: 80}]
