@@ -59,3 +59,18 @@ Then tag the Talos VM net0: `qm set 9000 -net0 ... ,tag=40`
   BEFORE cutting the VM over.
 - Certs use Cloudflare DNS-01 (outbound) - unaffected by subnet change.
 - service/pod CIDRs (10.96/10.244) unchanged; only host/VIP move.
+## DONE (2026-10-19)
+Cluster successfully moved to VLAN 40 / 10.0.0.0/24:
+- node talos-r7i-a74 = 10.0.0.10 (static), VIP = 10.0.0.60 (Talos-native ARP)
+- kube-apiserver 10.0.0.60:6443; kubeconfig/talosconfig updated
+- cross-VLAN storage verified FROM talos subnet: trueNAS :3260, odysseus :445
+- 9 apps Running, 11 PVCs Bound
+- HOW: qm set net0 tag=40; talosctl apply-config --file <full config
+  extracted from `get machineconfig` spec-block, edited endpoint/certSANs/
+  interface> (DHCP safety-net on the talos UniFi network caught the first
+  apply misstep at 10.0.0.245; kept as resilience net)
+REMAINING (declarative catch-up):
+- tofu state/plan still references old .230/.60 + repo drift (v1.10 default,
+  schematic) -> reconcile tofu to v1.14.4 + 10.0.0.x before next tofu use
+- DNS cutover still deferred (last step)
+- NodePort test URLs now http://10.0.0.10:30055/30883/30999/30966/30900
