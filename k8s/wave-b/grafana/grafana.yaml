@@ -1,0 +1,73 @@
+# Grafana — dashboards + provisioning from committed ConfigMaps (regenerable),
+# its own DB/plugins on an iSCSI PVC (fresh).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-data
+  namespace: monitoring
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 5Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: grafana}}
+  template:
+    metadata: {labels: {app: grafana}}
+    spec:
+      initContainers:
+        - name: fix-perms
+          image: busybox
+          command: ["sh", "-c", "chown -R 472:472 /var/lib/grafana"]
+          volumeMounts: [{name: data, mountPath: /var/lib/grafana}]
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          ports: [{name: http, containerPort: 3000}]
+          env:
+            - {name: GF_SECURITY_ADMIN_USER, value: leon}
+            - {name: GF_SERVER_ROOT_URL, value: https://grafana.leonvdbeek.com}
+          volumeMounts:
+            - {name: data, mountPath: /var/lib/grafana}
+            - {name: provisioning, mountPath: /etc/grafana/provisioning/datasources/prometheus.yml, subPath: prometheus.yml}
+            - {name: provisioning, mountPath: /etc/grafana/provisioning/dashboards/dashboards.yml, subPath: dashboards.yml}
+          readinessProbe: {httpGet: {path: /api/health, port: 3000}, initialDelaySeconds: 10}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: grafana-data}
+        - name: provisioning
+          configMap: {name: grafana-provisioning-cm}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+  namespace: monitoring
+spec:
+  selector: {app: grafana}
+  ports: [{name: http, port: 3000, targetPort: 3000}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: grafana-cert, namespace: monitoring}
+spec:
+  secretName: grafana-cert
+  dnsNames: [grafana.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: grafana-route, namespace: monitoring}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`grafana.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: grafana, port: 3000}]
+  tls: {secretName: grafana-cert}

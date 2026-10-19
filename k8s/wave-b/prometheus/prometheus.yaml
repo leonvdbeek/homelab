@@ -1,0 +1,70 @@
+# Prometheus — config from the committed prometheus.yml (ConfigMap via kustomize
+# generator), data on an iSCSI PVC (fresh; historical TSDB not migrated).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: prometheus-data
+  namespace: monitoring
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 10Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: prometheus}}
+  template:
+    metadata: {labels: {app: prometheus}}
+    spec:
+      initContainers:
+        - name: fix-perms
+          image: busybox
+          command: ["chown", "-R", "65534:65534", "/prometheus"]
+          volumeMounts: [{name: data, mountPath: /prometheus}]
+      containers:
+        - name: prometheus
+          image: prom/prometheus:latest
+          args: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus", "--storage.tsdb.retention.time=30d"]
+          ports: [{name: http, containerPort: 9090}]
+          volumeMounts:
+            - {name: config, mountPath: /etc/prometheus/prometheus.yml, subPath: prometheus.yml}
+            - {name: data, mountPath: /prometheus}
+          readinessProbe: {httpGet: {path: /-/ready, port: 9090}, initialDelaySeconds: 10}
+      volumes:
+        - name: config
+          configMap: {name: prometheus-cm}
+        - name: data
+          persistentVolumeClaim: {claimName: prometheus-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+  namespace: monitoring
+spec:
+  selector: {app: prometheus}
+  ports: [{name: http, port: 9090, targetPort: 9090}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: prometheus-cert, namespace: monitoring}
+spec:
+  secretName: prometheus-cert
+  dnsNames: [prometheus.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: prometheus-route, namespace: monitoring}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`prometheus.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: prometheus, port: 9090}]
+  tls: {secretName: prometheus-cert}
