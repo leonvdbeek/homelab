@@ -21,7 +21,7 @@ variable "talos_arch" {
 variable "talos_extensions" {
   description = "Official Talos system extensions baked into the image (https://factory.talos.dev/extensions). qemu-guest-agent lets Proxmox read the VM IP and do graceful shutdowns."
   type        = list(string)
-  default     = ["siderolabs/qemu-guest-agent"]
+  default     = ["siderolabs/qemu-guest-agent", "siderolabs/iscsi-tools"]
 }
 
 # --- Cluster -----------------------------------------------------------------
