@@ -1,0 +1,22 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespaces
+  - ingress/traefik
+  - cert-manager
+  - storage/odysseus-smb
+  - apps/redirect
+  - apps/homepage
+  - apps/ntfy
+  - apps/uptime-kuma
+  - apps/website
+  - apps/node-exporter
+  - apps/beszel
+  - apps/prometheus
+  - apps/grafana
+  - apps/seerr
+  - apps/calibre-web
+  - apps/stash
+  - apps/stash-vr
+  - apps/lms
+  - apps/lldp

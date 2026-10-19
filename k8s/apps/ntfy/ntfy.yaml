@@ -44,3 +44,22 @@ metadata:
 spec:
   selector: {app: ntfy}
   ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: ntfy-cert, namespace: apps}
+spec:
+  secretName: ntfy-cert
+  dnsNames: [ntfy.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: ntfy-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`ntfy.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: ntfy, port: 80}]
+  tls: {secretName: ntfy-cert}

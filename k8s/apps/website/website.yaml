@@ -24,3 +24,22 @@ metadata:
 spec:
   selector: {app: website}
   ports: [{name: http, port: 80, targetPort: 80}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: www-cert, namespace: apps}
+spec:
+  secretName: www-cert
+  dnsNames: [www.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: website-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`www.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: website, port: 80}]
+  tls: {secretName: www-cert}

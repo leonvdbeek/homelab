@@ -44,3 +44,22 @@ metadata:
 spec:
   selector: {app: homepage}
   ports: [{name: http, port: 3000, targetPort: 3000}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: home-cert, namespace: apps}
+spec:
+  secretName: home-cert
+  dnsNames: [home.leonvdbeek.com, homepage.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: home-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`home.leonvdbeek.com`) || Host(`homepage.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: homepage, port: 3000}]
+  tls: {secretName: home-cert}
