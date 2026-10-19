@@ -1,0 +1,17 @@
+# cert-manager — Let's Encrypt certs via Cloudflare DNS-01.
+#
+# cert-manager itself is deployed with the official Helm chart (see README).
+# This kustomization only owns the in-repo resources: the ClusterIssuer and the
+# Cloudflare secret provisioning note.
+#
+# The `cloudflare-api-token` Secret in the cert-manager namespace (key `api-token`)
+# holds the Cloudflare global API key — NOT committed; provision via secretspec.
+
+# NOTE: do NOT list the Secret resource here — it carries a real credential.
+# Provision it before apply, e.g.:
+#   kubectl -n cert-manager create secret generic cloudflare-api-token \
+#     --from-literal=api-token=<CF_API_KEY>
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - cluster-issuer.yaml
