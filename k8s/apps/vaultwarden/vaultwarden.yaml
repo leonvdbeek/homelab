@@ -1,0 +1,63 @@
+# vaultwarden — self-hosted Bitwarden. Data migrated from .73 /home/leon/portainer/vaultwarden/vw-data.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: vaultwarden-data
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 2Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vaultwarden
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: vaultwarden}}
+  template:
+    metadata: {labels: {app: vaultwarden}}
+    spec:
+      containers:
+        - name: vaultwarden
+          image: vaultwarden/server:latest
+          env:
+            - {name: SIGNUPS_ALLOWED, value: "false"}
+            - {name: DOMAIN, value: "https://vaultwarden.leonvdbeek.com"}
+          ports: [{name: http, containerPort: 80}]
+          volumeMounts: [{name: data, mountPath: /data}]
+          readinessProbe: {httpGet: {path: /alive, port: 80}, initialDelaySeconds: 10}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: vaultwarden-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vaultwarden
+  namespace: apps
+spec:
+  type: NodePort
+  selector: {app: vaultwarden}
+  ports: [{name: http, port: 80, targetPort: 80, nodePort: 30123}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: vaultwarden-cert, namespace: apps}
+spec:
+  secretName: vaultwarden-cert
+  dnsNames: [vaultwarden.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: vaultwarden-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`vaultwarden.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: vaultwarden, port: 80}]
+  tls: {secretName: vaultwarden-cert}

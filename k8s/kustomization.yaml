@@ -19,4 +19,5 @@ resources:
   - apps/stash
   - apps/stash-vr
   - apps/lms
+  - apps/vaultwarden
   - apps/lldp
