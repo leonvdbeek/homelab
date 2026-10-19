@@ -1,0 +1,18 @@
+# lldpd on the cluster node (hostNetwork) so the talos VM advertises its
+# identity to UniFi LLDP topology -> nests behind the m920x hypervisor.
+# Runs in the privileged 'monitoring' namespace.
+apiVersion: apps/v1
+kind: DaemonSet
+metadata: {name: lldp, namespace: monitoring}
+spec:
+  selector: {matchLabels: {job: lldp}}
+  template:
+    metadata: {labels: {job: lldp}}
+    spec:
+      hostNetwork: true
+      tolerations: [{key: node-role.kubernetes.io/control-plane, operator: Exists, effect: NoSchedule}]
+      containers:
+        - name: lldp
+          image: debian:bookworm-slim
+          command: ["/bin/sh","-c","apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq lldpd >/dev/null 2>&1; lldpd -ddd && (lldpcli configure system chassisid talos-r7i-a74 || true); sleep infinity"]
+          securityContext: {privileged: true}
