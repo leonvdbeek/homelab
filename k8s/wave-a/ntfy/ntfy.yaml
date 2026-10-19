@@ -1,0 +1,46 @@
+# ntfy (ntfy.leonvdbeek.com) — config/cache/state on one iSCSI PVC (subPaths
+# mirror the .73 bind layout: etc, var/cache, var/lib).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: ntfy-data
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 2Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: ntfy}}
+  template:
+    metadata: {labels: {app: ntfy}}
+    spec:
+      containers:
+        - name: ntfy
+          image: binwiederhier/ntfy:latest
+          ports: [{name: http, containerPort: 80}]
+          args: ["serve"]
+          volumeMounts:
+            - {name: data, mountPath: /etc/ntfy, subPath: etc}
+            - {name: data, mountPath: /var/cache/ntfy, subPath: cache}
+            - {name: data, mountPath: /var/lib/ntfy, subPath: lib}
+          readinessProbe: {httpGet: {path: /, port: 80}, initialDelaySeconds: 5}
+          resources: {limits: {memory: 256Mi}}
+      volumes:
+        - name: data
+          persistentVolumeClaim: {claimName: ntfy-data}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ntfy
+  namespace: apps
+spec:
+  selector: {app: ntfy}
+  ports: [{name: http, port: 80, targetPort: 80}]

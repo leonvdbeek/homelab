@@ -1,0 +1,46 @@
+# homepage (home.leonvdbeek.com) — config stored on an iSCSI PVC (migrated from .73).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: homepage-config
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 2Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homepage
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: homepage}}
+  template:
+    metadata: {labels: {app: homepage}}
+    spec:
+      containers:
+        - name: homepage
+          image: ghcr.io/gethomepage/homepage:latest
+          ports: [{name: http, containerPort: 3000}]
+          env:
+            - name: HOMEPAGE_ALLOWED_HOSTS
+              value: home.leonvdbeek.com,homepage.leonvdbeek.com
+            - name: HOMEPAGE_VAR_HOSTNAME
+              value: m920x
+          volumeMounts:
+            - {name: config, mountPath: /app/config}
+          readinessProbe: {tcpSocket: {port: 3000}, initialDelaySeconds: 10}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: homepage-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: homepage
+  namespace: apps
+spec:
+  selector: {app: homepage}
+  ports: [{name: http, port: 3000, targetPort: 3000}]

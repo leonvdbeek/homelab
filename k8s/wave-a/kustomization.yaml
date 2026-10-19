@@ -1,0 +1,15 @@
+# Wave A — migrate homepage, ntfy, uptime-kuma, website off the docker host.
+# Depends on cluster plumbing: traefik ingress, cert-manager ClusterIssuer
+# (letsencrypt), and the truenas-iscsi-fast StorageClass.
+#
+# Apply: kubectl apply -k k8s/wave-a
+# Stateful data (PVCs) is restored from .73 (see data-migration.md).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - routes.yaml
+  - homepage/homepage.yaml
+  - ntfy/ntfy.yaml
+  - uptime-kuma/uptime-kuma.yaml
+  - website/website.yaml
