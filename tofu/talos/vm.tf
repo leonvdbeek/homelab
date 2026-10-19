@@ -41,6 +41,8 @@ resource "proxmox_virtual_environment_vm" "talos" {
   }
 
   network_device {
+
+    tag    = 40
     bridge = var.network_bridge
     model  = "virtio"
   }
@@ -56,6 +58,6 @@ resource "proxmox_virtual_environment_vm" "talos" {
 
   lifecycle {
     # The guest agent rewrites some fields (e.g. MAC ordering) post-boot.
-    ignore_changes = [network_device[0].mac_address]
+    ignore_changes = [network_device[0].mac_address, network_device[0].tag, network_device[0].bridge, network_device[0].model]
   }
 }

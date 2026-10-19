@@ -9,7 +9,7 @@ variable "node_name" {
 variable "talos_version" {
   description = "Talos release to run (https://github.com/siderolabs/talos/releases). Bump for newer releases; `talosctl upgrade` uses the matching factory installer."
   type        = string
-  default     = "v1.10.4"
+  default     = "v1.14.4"
 }
 
 variable "talos_arch" {
