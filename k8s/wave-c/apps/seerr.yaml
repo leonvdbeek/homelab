@@ -1,0 +1,59 @@
+# seerr (request manager) — config migrated from .73 /home/leon/portainer/jellyseerr/config
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: seerr-config
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: seerr
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: seerr}}
+  template:
+    metadata: {labels: {app: seerr}}
+    spec:
+      containers:
+        - name: seerr
+          image: ghcr.io/seerr-team/seerr:latest
+          ports: [{name: http, containerPort: 5055}]
+          volumeMounts: [{name: config, mountPath: /app/config}]
+          readinessProbe: {httpGet: {path: /login, port: 5055}, initialDelaySeconds: 10}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: seerr-config}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: seerr
+  namespace: apps
+spec:
+  selector: {app: seerr}
+  ports: [{name: http, port: 5055, targetPort: 5055}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: seerr-cert, namespace: apps}
+spec:
+  secretName: seerr-cert
+  dnsNames: [seerr.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: seerr-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`seerr.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: seerr, port: 5055}]
+  tls: {secretName: seerr-cert}

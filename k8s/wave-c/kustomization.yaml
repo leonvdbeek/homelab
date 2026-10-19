@@ -1,0 +1,12 @@
+# Wave C — media apps (seerr, calibre-web, stash, stash-vr, lms).
+# NOTE: pulse intentionally omitted — it monitors Docker via /var/run/docker.sock,
+# which does not exist on Talos (k8s has no docker daemon); left on .73.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - storage/storageclass.yaml
+  - apps/seerr.yaml
+  - apps/calibre-web.yaml
+  - apps/stash.yaml
+  - apps/stash-vr.yaml
+  - apps/lms.yaml

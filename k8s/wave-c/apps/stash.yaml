@@ -1,0 +1,74 @@
+# stash — config+generated migrated from .73 /home/leon/portainer/stash (→ /root/.stash);
+# media stays on odysseus (SMB read-only, same Pictures/Video/Unsorted as .73).
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stash-config
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 8Gi}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: stash-media
+  namespace: apps
+spec:
+  accessModes: [ReadWriteMany]
+  storageClassName: odysseus-smb
+  resources: {requests: {storage: 1Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stash
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: stash}}
+  template:
+    metadata: {labels: {app: stash}}
+    spec:
+      containers:
+        - name: stash
+          image: stashapp/stash:latest
+          ports: [{name: http, containerPort: 9999}]
+          volumeMounts:
+            - {name: config, mountPath: /root/.stash}
+            - {name: media, mountPath: /data}
+          readinessProbe: {httpGet: {path: /login, port: 9999}, initialDelaySeconds: 15}
+      volumes:
+        - name: config
+          persistentVolumeClaim: {claimName: stash-config}
+        - name: media
+          persistentVolumeClaim: {claimName: stash-media}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stash
+  namespace: apps
+spec:
+  selector: {app: stash}
+  ports: [{name: http, port: 9999, targetPort: 9999}]
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata: {name: stash-cert, namespace: apps}
+spec:
+  secretName: stash-cert
+  dnsNames: [stash.leonvdbeek.com]
+  issuerRef: {name: letsencrypt, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: stash-route, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`stash.leonvdbeek.com`)
+      kind: Rule
+      services: [{name: stash, port: 9999}]
+  tls: {secretName: stash-cert}
