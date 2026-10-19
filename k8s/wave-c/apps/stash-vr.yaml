@@ -22,8 +22,9 @@ metadata:
   name: stash-vr
   namespace: apps
 spec:
+  type: NodePort
   selector: {app: stash-vr}
-  ports: [{name: http, port: 9666, targetPort: 9666}]
+  ports: [{name: http, port: 9666, targetPort: 9666, nodePort: 30966}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

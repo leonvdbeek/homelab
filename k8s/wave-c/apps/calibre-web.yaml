@@ -51,8 +51,9 @@ metadata:
   name: calibre-web
   namespace: apps
 spec:
+  type: NodePort
   selector: {app: calibre-web}
-  ports: [{name: http, port: 8083, targetPort: 8083}]
+  ports: [{name: http, port: 8083, targetPort: 8083, nodePort: 30883}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

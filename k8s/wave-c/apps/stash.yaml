@@ -51,8 +51,9 @@ metadata:
   name: stash
   namespace: apps
 spec:
+  type: NodePort
   selector: {app: stash}
-  ports: [{name: http, port: 9999, targetPort: 9999}]
+  ports: [{name: http, port: 9999, targetPort: 9999, nodePort: 30999}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

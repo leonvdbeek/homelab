@@ -36,8 +36,9 @@ metadata:
   name: seerr
   namespace: apps
 spec:
+  type: NodePort
   selector: {app: seerr}
-  ports: [{name: http, port: 5055, targetPort: 5055}]
+  ports: [{name: http, port: 5055, targetPort: 5055, nodePort: 30055}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
