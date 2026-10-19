@@ -50,9 +50,10 @@ metadata:
   name: lms
   namespace: apps
 spec:
-  type: NodePort
+  # ClusterIP (via Traefik IngressRoute)
+  type: ClusterIP
   selector: {app: lms}
-  ports: [{name: http, port: 9000, targetPort: 9000, nodePort: 30900}]
+  ports: [{name: http, port: 9000, targetPort: 9000}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

@@ -39,9 +39,10 @@ metadata:
   name: vaultwarden
   namespace: apps
 spec:
-  type: NodePort
+  # ClusterIP (via Traefik IngressRoute)
+  type: ClusterIP
   selector: {app: vaultwarden}
-  ports: [{name: http, port: 80, targetPort: 80, nodePort: 30123}]
+  ports: [{name: http, port: 80, targetPort: 80}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

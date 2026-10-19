@@ -36,9 +36,10 @@ metadata:
   name: seerr
   namespace: apps
 spec:
-  type: NodePort
+  # ClusterIP (via Traefik IngressRoute)
+  type: ClusterIP
   selector: {app: seerr}
-  ports: [{name: http, port: 5055, targetPort: 5055, nodePort: 30055}]
+  ports: [{name: http, port: 5055, targetPort: 5055}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate

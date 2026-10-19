@@ -51,9 +51,10 @@ metadata:
   name: stash
   namespace: apps
 spec:
-  type: NodePort
+  # ClusterIP (via Traefik IngressRoute)
+  type: ClusterIP
   selector: {app: stash}
-  ports: [{name: http, port: 9999, targetPort: 9999, nodePort: 30999}]
+  ports: [{name: http, port: 9999, targetPort: 9999}]
 ---
 apiVersion: cert-manager.io/v1
 kind: Certificate
