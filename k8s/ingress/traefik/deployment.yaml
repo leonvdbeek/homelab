@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: traefik
+  template:
+    metadata:
+      labels:
+        app: traefik
+    spec:
+      # Bind the node IP AND the Talos VIP (.60) directly on 80/443.
+      hostNetwork: true
+      containers:
+        - name: traefik
+          image: docker.io/traefik:v3.7.14
+          args:
+            - "--configfile=/config/traefik.yaml"
+          env:
+            - name: CF_API_KEY
+              valueFrom:
+                secretKeyRef: {name: cf-dns, key: CF_API_KEY}
+            - name: CF_API_EMAIL
+              valueFrom:
+                secretKeyRef: {name: cf-dns, key: CF_API_EMAIL}
+          ports:
+            - name: web
+              containerPort: 80
+            - name: websecure
+              containerPort: 443
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+            - name: data
+              mountPath: /data
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+      volumes:
+        - name: config
+          configMap:
+            name: traefik-config
+        - name: data
+          emptyDir: {}
