@@ -5,9 +5,22 @@ all:
         m920x:
           ansible_host: m920x.local.leonvdbeek.com
           ansible_user: root
+    docker:
+      hosts:
+        portainer:
+          ansible_host: 192.168.4.73
+          ansible_user: leon
+        odysseus:
+          ansible_host: 192.168.4.200
+          ansible_user: leon
+    apt:
+      hosts:
+        hermes:
+          ansible_host: 192.168.4.42
+          ansible_user: root
   vars:
     ansible_port: 22
-    ansible_ssh_common_args: "-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-    # Disruptive actions (host reboot) are opt-in so the base runbook is safe to
-    # re-run. Override per-run with: -e pve_allow_reboot=true
+    ansible_ssh_common_args: "-i /root/.ssh/id_ed25519_hermes -o BatchMode=yes -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+    # NOTE: odysseus (Synology, leon HAS passwordless sudo) + portainer (leon, in
+    # docker group, NO passwordless sudo) need per-host become handling.
     pve_allow_reboot: false

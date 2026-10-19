@@ -22,8 +22,11 @@ scrape_configs:
   - job_name: node
     static_configs:
       - targets:
-          - 192.168.4.73:9100   # portainer host
-          - 192.168.4.230:9100  # talos cluster node
+          - 192.168.4.54:9100    # m920x Proxmox host
+          - 192.168.4.42:9100    # hermes agent LXC
+          - 192.168.4.73:9100    # portainer docker host
+          - 192.168.4.200:9100   # odysseus Synology NAS (node_exporter container)
+          - 10.0.0.10:9100       # talos cluster node
           - lenovo-01.local.leonvdbeek.com:9100
           - lenovo-02.local.leonvdbeek.com:9100
           - lenovo-03.local.leonvdbeek.com:9100
