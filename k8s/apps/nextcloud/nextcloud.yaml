@@ -1,0 +1,53 @@
+# Nextcloud — migrated from .73 (v35.0.1, mariadb:10.6, nextcloud:35).
+# DB + app tree moved; config.php points at the in-cluster mariadb.
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-db
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 10Gi}}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nextcloud-www
+  namespace: apps
+spec:
+  accessModes: [ReadWriteOnce]
+  storageClassName: truenas-iscsi-fast
+  resources: {requests: {storage: 12Gi}}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mariadb
+  namespace: apps
+spec:
+  replicas: 1
+  selector: {matchLabels: {app: mariadb}}
+  template:
+    metadata: {labels: {app: mariadb}}
+    spec:
+      containers:
+        - name: mariadb
+          image: mariadb:10.6
+          envFrom: [{secretRef: {name: nextcloud-db-secret}}]
+          ports: [{name: mysql, containerPort: 3306}]
+          volumeMounts: [{name: db, mountPath: /var/lib/mysql}]
+          readinessProbe: {tcpSocket: {port: 3306}, initialDelaySeconds: 15}
+          livenessProbe: {tcpSocket: {port: 3306}, initialDelaySeconds: 30}
+      volumes:
+        - name: db
+          persistentVolumeClaim: {claimName: nextcloud-db}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mariadb
+  namespace: apps
+spec:
+  selector: {app: mariadb}
+  ports: [{name: mysql, port: 3306, targetPort: 3306}]
