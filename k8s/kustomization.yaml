@@ -7,6 +7,7 @@ resources:
   - storage/odysseus-smb
   - apps/redirect
   - apps/homepage
+  - apps/ingress
   - apps/ntfy
   - apps/uptime-kuma
   - apps/website

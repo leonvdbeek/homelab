@@ -1,0 +1,34 @@
+# Internal root CA — signs TLS certs for the local-only *.talos domain.
+# No public DNS/LE needed: cert-manager self-signs a root, then this CA issuer
+# signs certs for any internal hostname. Trust the root ("Talos Internal Root CA")
+# on client devices once to get valid HTTPS everywhere inside the LAN.
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned
+spec:
+  selfSigned: {}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: talos-root-ca
+  namespace: cert-manager
+spec:
+  isCA: true
+  commonName: Talos Internal Root CA
+  secretName: talos-ca
+  duration: 87600h   # 10 years
+  issuerRef:
+    name: selfsigned
+    kind: ClusterIssuer
+  subject:
+    organizations: [Homelab]
+---
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: talos-ca-issuer
+spec:
+  ca:
+    secretName: talos-ca

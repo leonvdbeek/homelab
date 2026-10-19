@@ -1,0 +1,157 @@
+# Internal-only *.talos access: wildcard certs (signed by the talos-ca-issuer
+# root) + Traefik IngressRoutes on short hostnames. No NodePorts, no public DNS.
+# Each *.talos host resolves to the VIP 10.0.0.60 via UniFi DNS.
+
+# --- apps namespace wildcard cert + routes ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: talos-wildcard
+  namespace: apps
+spec:
+  secretName: talos-wildcard-tls
+  dnsNames: ["*.talos"]
+  issuerRef: {name: talos-ca-issuer, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: home-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`home.talos`)
+      kind: Rule
+      services: [{name: homepage, port: 3000}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: ntfy-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`ntfy.talos`)
+      kind: Rule
+      services: [{name: ntfy, port: 80}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: uptime-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`uptime.talos`)
+      kind: Rule
+      services: [{name: uptime-kuma, port: 3001}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: website-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`www.talos`)
+      kind: Rule
+      services: [{name: website, port: 80}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: seerr-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`seerr.talos`)
+      kind: Rule
+      services: [{name: seerr, port: 5055}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: calibre-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`calibre.talos`)
+      kind: Rule
+      services: [{name: calibre-web, port: 8083}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: stash-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`stash.talos`)
+      kind: Rule
+      services: [{name: stash, port: 9999}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: stashvr-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`stashvr.talos`)
+      kind: Rule
+      services: [{name: stash-vr, port: 9666}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: lms-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`lms.talos`)
+      kind: Rule
+      services: [{name: lms, port: 9000}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: vaultwarden-talos, namespace: apps}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`vaultwarden.talos`)
+      kind: Rule
+      services: [{name: vaultwarden, port: 80}]
+  tls: {secretName: talos-wildcard-tls}
+---
+# --- monitoring namespace wildcard cert + routes ---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: talos-wildcard
+  namespace: monitoring
+spec:
+  secretName: talos-wildcard-tls
+  dnsNames: ["*.talos"]
+  issuerRef: {name: talos-ca-issuer, kind: ClusterIssuer}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: grafana-talos, namespace: monitoring}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`grafana.talos`)
+      kind: Rule
+      services: [{name: grafana, port: 3000}]
+  tls: {secretName: talos-wildcard-tls}
+---
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata: {name: prometheus-talos, namespace: monitoring}
+spec:
+  entryPoints: [websecure]
+  routes:
+    - match: Host(`prometheus.talos`)
+      kind: Rule
+      services: [{name: prometheus, port: 9090}]
+  tls: {secretName: talos-wildcard-tls}
