@@ -66,7 +66,13 @@ resource "talos_machine_configuration_apply" "cp" {
           interfaces = [
             {
               interface = var.vm_network_interface
-              dhcp      = true
+              addresses = ["10.0.0.10/24"]
+              routes = [
+                {
+                  network = "0.0.0.0/0"
+                  gateway = "10.0.0.1"
+                },
+              ]
               vip = {
                 ip = var.cluster_vip
               }
