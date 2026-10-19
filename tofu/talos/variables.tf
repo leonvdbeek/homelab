@@ -33,9 +33,9 @@ variable "cluster_name" {
 }
 
 variable "cluster_vip" {
-  description = "Shared IP for the Kubernetes API. Talos floats it via ARP, giving a stable API endpoint even though the node gets its address from DHCP — and it becomes real HA if more control-plane nodes are added later. Must be a FREE IP on the VM's L2 segment (same 192.168.4.0/24 subnet)."
+  description = "Shared IP for the Kubernetes API. Talos floats it via ARP, giving a stable API endpoint even though the node gets its address from DHCP — and it becomes real HA if more control-plane nodes are added later. Must be a FREE IP on the VM's L2 segment. (On the dedicated talos VLAN: 10.0.0.60.)"
   type        = string
-  default     = "192.168.4.60"
+  default     = "10.0.0.60"
 }
 
 variable "vm_network_interface" {
